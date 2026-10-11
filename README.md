@@ -2,6 +2,23 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+## Database
+
+This project uses PostgreSQL through Prisma.
+
+Install PostgreSQL locally on Windows, then create the database used by `.env`:
+
+```bash
+createdb -U postgres homefix
+```
+
+Apply migrations and generate the Prisma client:
+
+```bash
+npm run db:migrate
+npm run db:generate
+```
+
 First, run the development server:
 
 ```bash
