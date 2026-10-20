@@ -1,0 +1,15 @@
+ALTER TABLE "User"
+  ADD COLUMN "role" TEXT NOT NULL DEFAULT 'CLIENT',
+  ADD COLUMN "status" TEXT NOT NULL DEFAULT 'ACTIVE',
+  ADD COLUMN "phone" TEXT,
+  ADD COLUMN "address" TEXT,
+  ADD COLUMN "city" TEXT,
+  ADD COLUMN "businessName" TEXT,
+  ADD COLUMN "specialty" TEXT,
+  ADD COLUMN "description" TEXT,
+  ADD COLUMN "experience" TEXT,
+  ADD COLUMN "serviceCity" TEXT,
+  ADD COLUMN "coveredAreas" TEXT,
+  ADD COLUMN "priceRange" TEXT,
+  ADD COLUMN "documentUrl" TEXT,
+  ADD COLUMN "termsAccepted" BOOLEAN NOT NULL DEFAULT false;

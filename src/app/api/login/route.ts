@@ -30,6 +30,13 @@ export async function POST(req: Request) {
     );
   }
 
+  if (user.status === "PENDING_VERIFICATION") {
+    return NextResponse.json(
+      { error: "Votre profil professionnel est en attente de vérification. Vous pourrez vous connecter dès qu’il sera validé." },
+      { status: 403 },
+    );
+  }
+
   await createSession(user.id);
 
   return NextResponse.json({
