@@ -30,9 +30,11 @@ export async function POST(req: Request) {
     );
   }
 
-  if (user.status === "PENDING_VERIFICATION") {
+  if (user.role === "PROFESSIONAL" && user.status !== "APPROVED") {
     return NextResponse.json(
-      { error: "Votre profil professionnel est en attente de vérification. Vous pourrez vous connecter dès qu’il sera validé." },
+      { error: user.status === "REJECTED"
+        ? `Votre dossier professionnel a été refusé.${user.verificationReason ? ` Motif : ${user.verificationReason}` : " Contactez HomeFix pour plus d’informations."}`
+        : "Votre profil professionnel est en attente de vérification. Vous pourrez vous connecter dès qu’il sera validé." },
       { status: 403 },
     );
   }
@@ -43,5 +45,6 @@ export async function POST(req: Request) {
     id: user.id,
     name: user.name,
     email: user.email,
+    role: user.role,
   });
 }

@@ -25,7 +25,7 @@ export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isAuthPage = pathname === "/login" || pathname === "/register";
 
-  if (pathname.startsWith("/dashboard") && !isAuth) {
+  if ((pathname.startsWith("/dashboard") || pathname.startsWith("/professionnel")) && !isAuth) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
@@ -37,5 +37,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login", "/register"],
+  matcher: ["/dashboard/:path*", "/professionnel/:path*", "/login", "/register"],
 };

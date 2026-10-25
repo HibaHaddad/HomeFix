@@ -82,15 +82,20 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
         return;
       }
 
+      let destination = "/dashboard";
       if (mode === "register") {
         const result = await res.json();
         if (result.status === "PENDING_VERIFICATION") {
           setRegistrationPending(true);
           return;
         }
+      } else {
+        const result = await res.json();
+        if (result.role === "PROFESSIONAL") destination = "/professionnel/tableau-de-bord";
+        if (result.role === "ADMIN") destination = "/admin/professionnels";
       }
 
-      router.push("/dashboard");
+      router.push(destination);
       router.refresh();
     } catch {
       setError(mode === "login"

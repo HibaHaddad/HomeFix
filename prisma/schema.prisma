@@ -20,6 +20,11 @@ model User {
   password          String
   role              String   @default("CLIENT")
   status            String   @default("ACTIVE")
+  verificationReason String?
+  verifiedAt        DateTime?
+  verifiedById      Int?
+  profilePhoto      Bytes?
+  profilePhotoMime  String?
   phone             String?
   address           String?
   city              String?

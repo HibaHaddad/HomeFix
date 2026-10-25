@@ -12,11 +12,18 @@ export default async function DashboardPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { name: true, email: true, createdAt: true },
+    select: { name: true, email: true, createdAt: true, role: true },
   });
 
   if (!user) {
     redirect("/login");
+  }
+
+  if (user.role === "PROFESSIONAL") {
+    redirect("/professionnel/tableau-de-bord");
+  }
+  if (user.role === "ADMIN") {
+    redirect("/admin/professionnels");
   }
 
   return (
