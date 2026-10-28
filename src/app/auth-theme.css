@@ -1,0 +1,129 @@
+/* Authentication shares the landing page's warm paper, forest and terracotta. */
+:is(.login-page, .register-page) {
+  --auth-paper: #f4efdf;
+  --auth-surface: #faf7ed;
+  --auth-inset: #ece7d7;
+  --auth-ink: #293e32;
+  --auth-muted: #606d60;
+  --auth-line: #293e3226;
+  --auth-accent: #b65f3d;
+  --green: #385c47;
+  --forest: #293e32;
+  --sage: #e4e8d9;
+  --peach: #b65f3d;
+  --ivory: #f4efdf;
+  --login-ink: #293e32;
+  background: var(--auth-paper);
+  color: var(--auth-ink);
+}
+
+.login-shell, .register-card {
+  background: var(--auth-surface);
+  border-color: var(--auth-line);
+  box-shadow: 0 20px 60px #293e320c;
+}
+.login-panel { background: var(--auth-paper); }
+/* Keep illustration, caption and introduction in separate document-flow rows. */
+.login-page .login-shell { height: auto; min-height: 720px; }
+.login-page .login-aside {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(300px, 1fr) auto auto;
+  gap: 24px;
+  align-content: stretch;
+}
+.login-page .login-aside-top { flex-wrap: wrap; row-gap: 8px; }
+.login-page .login-visual {
+  position: relative;
+  inset: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(270px, 1fr) auto;
+  place-items: stretch;
+  gap: 18px;
+  min-width: 0;
+  min-height: 0;
+}
+.login-page .login-artwork { position: relative; width: 100%; min-width: 0; min-height: 270px; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; }
+.login-page .login-room { min-height: 220px; height: 80%; max-height: 330px; }
+.login-page .login-visual-caption { position: relative; bottom: auto; margin: 0; text-align: center; font-size: 10px; line-height: 1.7; }
+.login-page .login-aside-copy { align-self: start; margin: 0; padding-left: 0; }
+.login-page .login-aside-kicker { display: block; line-height: 1.7; }
+.login-page .login-aside-copy h2 { margin: 10px 0 12px; line-height: 1.15; }
+.login-page .login-aside-copy p { max-width: 390px; line-height: 1.8; }
+.login-page .login-aside-bottom { flex-wrap: wrap; row-gap: 8px; line-height: 1.7; }
+@media (max-width: 900px) and (min-width: 681px) {
+  .login-page .login-aside { gap: 20px; padding-inline: 22px; }
+  .login-page .login-aside-copy h2 { font-size: 28px; }
+  .login-page .login-trust-card { left: 0; padding: 9px; gap: 7px; }
+  .login-page .login-trust-card strong { font-size: 8px; }
+  .login-page .login-trust-card small { font-size: 7px; }
+}
+@media (max-width: 680px) {
+  .login-page .login-shell { min-height: 100svh; }
+  .login-page .login-aside { min-height: 640px; gap: 24px; padding: 28px 24px; }
+  .login-page .login-aside-copy h2 { font-size: 32px; }
+}
+.login-aside, .register-aside {
+  background: var(--auth-inset);
+  border-color: var(--auth-line);
+}
+.login-aside::before {
+  background: radial-gradient(ellipse at 71% 37%, #faf7ed99, transparent 55%), linear-gradient(145deg, #ece7d7, #e4dfcb);
+}
+.register-aside::before { background: #d8d5bfa6; }
+.login-visual-orb-one { background: #d8d5bf; }
+.login-visual-orb-two, .register-home-sun { background: #dfad86; }
+.login-room { border-color: var(--auth-surface); background: var(--auth-paper); }
+.login-room-wall { background: linear-gradient(90deg, #e8dfca, #faf7ed 52%, #e8dcc6); }
+.login-sofa { background: #58745a; }
+.login-sofa::before { background: #7d9274; }
+.login-rug { background: #d5ac83; }
+.login-float-card { background: #faf7edee; border-color: var(--auth-line); box-shadow: 0 14px 35px #293e3215; }
+.login-rating-stars, .login-sparkle, .register-home-sparkle { color: var(--auth-accent); }
+.register-home-roof { background: var(--auth-accent); }
+.register-home-body { background: var(--auth-paper); border-color: var(--auth-surface); }
+.register-home-body em { background: var(--green); }
+
+:is(.login-brand-mark, .register-brand-mark) { background: #167c68; box-shadow: none; }
+:is(.login-content h1, .login-aside-copy h2, .register-intro h1, .register-aside-copy h2, .register-card-heading h2) { color: var(--auth-ink); }
+:is(.login-content h1 span, .login-aside-copy h2 span, .register-intro h1 span) { color: var(--auth-accent); }
+:is(.login-eyebrow, .login-aside-kicker, .register-eyebrow, .register-aside-copy > span) { color: var(--auth-accent); }
+:is(.login-eyebrow span, .register-eyebrow > span, .register-aside-label span) { background: var(--auth-accent); box-shadow: 0 0 0 4px #b65f3d14; }
+.login-aside-top i { background: var(--green); box-shadow: 0 0 0 4px #385c4714; }
+:is(.login-intro, .login-signup, .login-remember, .login-security, .login-footer, .login-aside-top, .login-aside-bottom, .login-aside-copy p, .login-visual-caption, .login-trust-card small, .login-rating-card > strong small, .register-header > p, .register-intro > p, .register-card-heading p, .register-step-copy, .register-role-footnote, .register-role-option small, .register-field-hint, .register-progress-top i, .register-progress-labels, .register-required-note, .register-security-note, .register-footer, .register-aside-label, .register-aside-copy p, .register-aside-bottom) { color: var(--auth-muted); }
+.login-aside-line { background: var(--auth-line); }
+.register-header, .register-section-heading, .register-summary-list, .register-summary-list > div { border-color: var(--auth-line); }
+
+:is(.login-field > input, .login-password-wrap input, .register-field input, .register-field select, .register-field textarea, .register-phone-wrap) {
+  background: var(--auth-surface);
+  color: var(--auth-ink);
+  border-color: #a5ad9970;
+}
+:is(.login-field > input, .login-password-wrap input, .register-field input, .register-field textarea)::placeholder { color: #757d6e; }
+:is(.login-page, .register-page) input:autofill {
+  -webkit-text-fill-color: var(--auth-ink);
+  caret-color: var(--auth-ink);
+  box-shadow: 0 0 0 1000px var(--auth-surface) inset;
+}
+:is(.login-field > input, .login-password-wrap input, .register-field input, .register-field select, .register-field textarea):focus {
+  background: #fdfbf4;
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px #385c471a;
+}
+.register-phone-wrap:focus-within { border-color: var(--green); box-shadow: 0 0 0 3px #385c471a; }
+:is(.login-page, .register-page) input:autofill:focus { box-shadow: 0 0 0 1000px #fdfbf4 inset, 0 0 0 3px #385c471a; }
+.register-phone-wrap > span { background: var(--auth-inset); border-color: var(--auth-line); color: var(--auth-muted); }
+.register-phone-wrap input, .register-phone-wrap input:focus { background: transparent; }
+:is(.login-checkbox, .register-terms-check, .register-role-radio) { background: var(--auth-surface); border-color: #a5ad99; }
+.register-role-option { background: var(--auth-paper); border-color: var(--auth-line); }
+.register-role-option:hover { border-color: #7d9274; }
+.register-role-option.is-selected { background: var(--sage); border-color: var(--green); box-shadow: 0 0 0 2px #385c4710; }
+.register-role-icon-pro { background: #eedac7; color: #934b2f; }
+.register-progress-track span { background: #dedfce; }
+.register-progress-track span.is-complete { background: var(--green); }
+.register-back { background: var(--auth-surface); border-color: var(--auth-line); color: var(--auth-muted); }
+.register-back:hover { background: var(--auth-inset); }
+:is(.login-submit, .register-submit, .register-next) { background: var(--green); box-shadow: 0 8px 18px #293e3215; }
+:is(.login-submit, .register-submit, .register-next):hover:not(:disabled) { background: var(--forest); box-shadow: 0 11px 24px #293e3220; }
+:is(.login-page, .register-page) :is(a, button, input, select, textarea):focus-visible { outline: 3px solid var(--auth-accent); outline-offset: 3px; }

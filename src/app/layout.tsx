@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HomeFix TN — Les bons pros pour votre maison",
+  title: "HomeFix — Les bons pros pour votre maison",
   description:
     "Trouvez des professionnels de confiance pour vos travaux et dépannages à domicile, partout en Tunisie.",
 };

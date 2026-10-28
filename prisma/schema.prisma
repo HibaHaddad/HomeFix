@@ -35,7 +35,211 @@ model User {
   serviceCity       String?
   coveredAreas      String?
   priceRange        String?
+  isPublic          Boolean  @default(true)
+  experienceYears   Int?
+  priceMin          Int?
+  priceMax          Int?
+  availability      String?
+  reviews           ProfessionalReview[] @relation("ProfessionalReviews")
+  authoredReviews   ProfessionalReview[] @relation("ClientReviews")
+  receivedRequests  ServiceRequest[] @relation("ReceivedRequests")
+  sentRequests      ServiceRequest[] @relation("SentRequests")
+  favorites         Favorite[] @relation("ClientFavorites")
+  favoritedBy       Favorite[] @relation("FavoriteProfessional")
+  equipment         Equipment[]
+  notifications     ClientNotification[]
+  complaints        Complaint[]
+  notificationEnabled Boolean @default(true)
   certificationPdf  Bytes?
   termsAccepted     Boolean  @default(false)
   createdAt         DateTime @default(now())
+
+  @@index([role, status, isPublic, createdAt])
+}
+
+model ProfessionalReview {
+  id             Int @id @default(autoincrement())
+  professionalId Int
+  clientId       Int
+  rating         Int
+  comment        String
+  published      Boolean @default(false)
+  createdAt      DateTime @default(now())
+  requestId      Int? @unique
+  quality        Int?
+  punctuality    Int?
+  communication  Int?
+  priceRespect   Int?
+  request        ServiceRequest? @relation(fields: [requestId], references: [id])
+  professional   User @relation("ProfessionalReviews", fields: [professionalId], references: [id], onDelete: Cascade)
+  client         User @relation("ClientReviews", fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([professionalId, published])
+}
+
+model ServiceRequest {
+  id             Int @id @default(autoincrement())
+  clientId       Int
+  professionalId Int?
+  kind           String
+  message        String
+  title          String @default("Demande de service")
+  category       String @default("Autres")
+  urgency        String @default("NORMAL")
+  address        String @default("")
+  preferredDates String?
+  equipmentId    Int?
+  status         String @default("SENT")
+  clientConfirmedAt DateTime?
+  updatedAt      DateTime @default(now()) @updatedAt
+  createdAt      DateTime @default(now())
+  client         User @relation("SentRequests", fields: [clientId], references: [id], onDelete: Cascade)
+  professional   User? @relation("ReceivedRequests", fields: [professionalId], references: [id], onDelete: Cascade)
+  equipment      Equipment? @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
+  attachments    ClientAttachment[]
+  messages       ChatMessage[]
+  quotes         Quote[]
+  booking        Booking?
+  events         RequestEvent[]
+  review         ProfessionalReview?
+  complaints     Complaint[]
+
+  @@index([professionalId, createdAt])
+  @@index([clientId, createdAt])
+}
+
+model ChatMessage {
+  id Int @id @default(autoincrement())
+  requestId Int
+  senderId Int
+  text String
+  latitude Float?
+  longitude Float?
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  request ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  attachments ClientAttachment[]
+  @@index([requestId, createdAt])
+}
+
+model ClientAttachment {
+  id Int @id @default(autoincrement())
+  requestId Int
+  messageId Int?
+  name String
+  mime String
+  size Int
+  data Bytes
+  createdAt DateTime @default(now())
+  request ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  message ChatMessage? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  @@index([requestId])
+}
+
+model Quote {
+  id Int @id @default(autoincrement())
+  requestId Int
+  amountMillimes Int
+  details String
+  status String @default("PENDING")
+  counterAmountMillimes Int?
+  validUntil DateTime
+  createdAt DateTime @default(now())
+  request ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  invoice ClientInvoice?
+  @@index([requestId, status])
+}
+
+model Booking {
+  id Int @id @default(autoincrement())
+  requestId Int @unique
+  professionalId Int
+  startsAt DateTime
+  endsAt DateTime
+  status String @default("PROPOSED")
+  reason String?
+  request ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  @@index([professionalId, startsAt, endsAt])
+}
+
+model RequestEvent {
+  id Int @id @default(autoincrement())
+  requestId Int
+  actorId Int
+  status String
+  description String
+  createdAt DateTime @default(now())
+  request ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  @@index([requestId, createdAt])
+}
+
+model ClientInvoice {
+  id Int @id @default(autoincrement())
+  quoteId Int @unique
+  totalMillimes Int
+  depositMillimes Int
+  paidMillimes Int @default(0)
+  status String @default("UNPAID")
+  paymentReference String? @unique
+  createdAt DateTime @default(now())
+  quote Quote @relation(fields: [quoteId], references: [id])
+}
+
+model Equipment {
+  id Int @id @default(autoincrement())
+  clientId Int
+  name String
+  category String
+  brand String?
+  notes String?
+  createdAt DateTime @default(now())
+  client User @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  requests ServiceRequest[]
+  reminders MaintenanceReminder[]
+  @@index([clientId])
+}
+
+model MaintenanceReminder {
+  id Int @id @default(autoincrement())
+  equipmentId Int
+  title String
+  dueAt DateTime
+  intervalMonths Int?
+  completedAt DateTime?
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  @@index([equipmentId, dueAt])
+}
+
+model Favorite {
+  clientId Int
+  professionalId Int
+  createdAt DateTime @default(now())
+  client User @relation("ClientFavorites", fields: [clientId], references: [id], onDelete: Cascade)
+  professional User @relation("FavoriteProfessional", fields: [professionalId], references: [id], onDelete: Cascade)
+  @@id([clientId, professionalId])
+}
+
+model ClientNotification {
+  id Int @id @default(autoincrement())
+  userId Int
+  title String
+  href String
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt])
+}
+
+model Complaint {
+  id Int @id @default(autoincrement())
+  clientId Int
+  requestId Int?
+  subject String
+  message String
+  status String @default("OPEN")
+  response String?
+  createdAt DateTime @default(now())
+  client User @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  request ServiceRequest? @relation(fields: [requestId], references: [id])
+  @@index([clientId, createdAt])
 }

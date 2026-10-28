@@ -16,7 +16,12 @@ const profileSchema = z.object({
   priceRange: z.string().trim().max(160),
   description: z.string().trim().max(2000),
   currentPassword: z.string().max(200).optional(),
-}).strict();
+  isPublic: z.boolean().optional(),
+  experienceYears: z.number().int().min(0).max(80).nullable().optional(),
+  priceMin: z.number().int().min(0).max(100000).nullable().optional(),
+  priceMax: z.number().int().min(0).max(100000).nullable().optional(),
+  availability: z.enum(["AVAILABLE", "THIS_WEEK", "BUSY"]).nullable().optional(),
+}).strict().refine((data) => data.priceMax == null || (data.priceMin != null && data.priceMax >= data.priceMin), { message: "Renseignez un tarif minimum inférieur ou égal au tarif maximum." });
 
 export async function PUT(request: Request) {
   const origin = request.headers.get("origin");

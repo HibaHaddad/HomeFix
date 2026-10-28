@@ -2,28 +2,12 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { reverseGeocodeGovernorate } from "@/lib/reverse-geocode";
 
 type RegistrationRole = "CLIENT" | "PROFESSIONAL";
 
 const clientSteps = ["Profil", "Coordonnées", "Informations complémentaires", "Sécurité", "Récapitulatif"];
 const professionalSteps = ["Profil", "Coordonnées", "Votre activité", "Intervention", "Sécurité", "Récapitulatif"];
-const governorateCenters = [
-  ["Ariana", 36.8625, 10.1956], ["Béja", 36.7256, 9.1817], ["Ben Arous", 36.7545, 10.2217], ["Bizerte", 37.2744, 9.8739],
-  ["Gabès", 33.8815, 10.0982], ["Gafsa", 34.425, 8.784], ["Jendouba", 36.501, 8.78], ["Kairouan", 35.678, 10.096],
-  ["Kasserine", 35.1676, 8.8365], ["Kébili", 33.7044, 8.969], ["Le Kef", 36.174, 8.704], ["Mahdia", 35.5047, 11.0622],
-  ["La Manouba", 36.808, 10.097], ["Médenine", 33.3549, 10.505], ["Monastir", 35.7643, 10.811], ["Nabeul", 36.451, 10.735],
-  ["Sfax", 34.7406, 10.7603], ["Sidi Bouzid", 35.038, 9.4858], ["Siliana", 36.084, 9.37], ["Sousse", 35.8256, 10.636],
-  ["Tataouine", 32.929, 10.45], ["Tozeur", 33.9197, 8.1335], ["Tunis", 36.806, 10.1815], ["Zaghouan", 36.402, 10.1429],
-] as const;
-
-function nearestGovernorate(latitude: number, longitude: number) {
-  return governorateCenters.reduce((nearest, current) => {
-    const currentDistance = (current[1] - latitude) ** 2 + (current[2] - longitude) ** 2;
-    const nearestDistance = (nearest[1] - latitude) ** 2 + (nearest[2] - longitude) ** 2;
-    return currentDistance < nearestDistance ? current : nearest;
-  })[0];
-}
-
 export default function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -170,21 +154,28 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
 
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        setLocating(false);
-        if (coords.latitude < 30 || coords.latitude > 38 || coords.longitude < 7 || coords.longitude > 12) {
-          setLocationMessage("Votre position semble être hors de Tunisie. Choisissez votre ville dans la liste.");
-          return;
+      async ({ coords }) => {
+        try {
+          const governorate = await reverseGeocodeGovernorate(coords.latitude, coords.longitude);
+          setServiceCityChoice(governorate);
+          setLocationMessage(`Gouvernorat détecté : ${governorate}. Vérifiez-le avant de continuer.`);
+        } catch (error) {
+          setLocationMessage(error instanceof Error && error.name !== "TimeoutError"
+            && error.name !== "TypeError" ? error.message
+            : "Le service de localisation est inaccessible. Réessayez ou choisissez votre gouvernorat dans la liste.");
+        } finally {
+          setLocating(false);
         }
-        const suggestion = nearestGovernorate(coords.latitude, coords.longitude);
-        setServiceCityChoice(suggestion);
-        setLocationMessage(`Ville proposée : ${suggestion}. Vérifiez-la avant de continuer.`);
       },
-      () => {
+      (error) => {
         setLocating(false);
-        setLocationMessage("Position non accessible. Choisissez votre ville dans la liste.");
+        setLocationMessage(error.code === error.PERMISSION_DENIED
+          ? "Accès à la position refusé. Autorisez la localisation dans votre navigateur ou choisissez votre gouvernorat dans la liste."
+          : error.code === error.TIMEOUT
+            ? "La recherche de votre position a pris trop de temps. Réessayez ou choisissez votre gouvernorat dans la liste."
+            : "Position non accessible. Choisissez votre gouvernorat dans la liste.");
       },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     );
   }
 
@@ -259,8 +250,9 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
       </fieldset>
 
       {registerRole === "PROFESSIONAL" && <fieldset data-step="4" hidden={step !== 4} className={`register-step-panel step-${stepDirection}`}>
-        <legend>Où intervenez-vous ?</legend><p className="register-step-copy">Choisissez votre ville d’intervention. Nous pouvons vous proposer celle qui est la plus proche de votre position.</p>
+        <legend>Où intervenez-vous ?</legend><p className="register-step-copy">Choisissez votre ville d’intervention. Nous pouvons identifier votre gouvernorat à partir de votre position actuelle.</p>
         <button type="button" className="register-location-button" onClick={suggestCityFromLocation} disabled={locating}><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>{locating ? "Recherche de votre position…" : "Utiliser ma position"}</button>
+        <p className="register-field-hint">En utilisant ce bouton, vous transmettez votre position à <a href="https://www.bigdatacloud.com/privacy" target="_blank" rel="noreferrer">BigDataCloud</a> pour identifier votre gouvernorat.</p>
         {locationMessage && <p className="register-location-message" role="status" aria-live="polite">{locationMessage}</p>}
         <div className="register-fields-grid"><label className="register-field register-field-full"><span>Ville d’intervention <i>*</i></span><select name="serviceCity" value={serviceCityChoice} onChange={(event) => setServiceCityChoice(event.target.value)} required><option value="" disabled>Choisir un gouvernorat</option><option>Ariana</option><option>Béja</option><option>Ben Arous</option><option>Bizerte</option><option>Gabès</option><option>Gafsa</option><option>Jendouba</option><option>Kairouan</option><option>Kasserine</option><option>Kébili</option><option>Le Kef</option><option>Mahdia</option><option>La Manouba</option><option>Médenine</option><option>Monastir</option><option>Nabeul</option><option>Sfax</option><option>Sidi Bouzid</option><option>Siliana</option><option>Sousse</option><option>Tataouine</option><option>Tozeur</option><option>Tunis</option><option>Zaghouan</option></select></label>
           <label className="register-field register-field-full"><span>Tarifs indicatifs</span><input name="priceRange" placeholder="Ex. À partir de 40 DT" /></label>

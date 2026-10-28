@@ -4,7 +4,7 @@ import ProfessionalPhotoUploader from "@/components/professional/ProfessionalPho
 import ProfessionalProfileEditor from "@/components/professional/ProfessionalProfileEditor";
 import ProfessionalCalendar from "@/components/professional/ProfessionalCalendar";
 
-type Professional = { name: string; email: string; phone: string | null; address: string | null; city: string | null; role: string; status: string; businessName: string | null; specialty: string | null; description: string | null; experience: string | null; serviceCity: string | null; coveredAreas: string | null; priceRange: string | null; createdAt: Date };
+type Professional = { name: string; email: string; phone: string | null; address: string | null; city: string | null; role: string; status: string; businessName: string | null; specialty: string | null; description: string | null; experience: string | null; serviceCity: string | null; coveredAreas: string | null; priceRange: string | null; createdAt: Date; isPublic?: boolean; experienceYears?: number | null; priceMin?: number | null; priceMax?: number | null; availability?: string | null };
 const content: Record<string, { title: string; eyebrow: string; intro: string; icon: string }> = {
   "tableau-de-bord": { title: "Votre activité, en un coup d’œil", eyebrow: "TABLEAU DE BORD", intro: "Retrouvez ici les informations de votre espace professionnel.", icon: "⌂" },
   demandes: { title: "Demandes de service", eyebrow: "VOTRE ACTIVITÉ", intro: "Consultez les nouvelles demandes qui correspondent à vos services.", icon: "◇" },

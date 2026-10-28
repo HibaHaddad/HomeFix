@@ -1,5 +1,6 @@
 import Link from "next/link";
 import AuthForm from "@/components/AuthForm";
+import "../auth-theme.css";
 
 function HomeFixMark() {
   return (
@@ -12,6 +13,7 @@ function HomeFixMark() {
 function HomeIllustration() {
   return (
     <div className="login-visual" aria-label="Un intérieur chaleureux, entre de bonnes mains" role="img">
+      <div className="login-artwork">
       <div className="login-visual-orb login-visual-orb-one" />
       <div className="login-visual-orb login-visual-orb-two" />
       <div className="login-window"><span /><span /><span /></div>
@@ -27,6 +29,7 @@ function HomeIllustration() {
       <div className="login-float-card login-trust-card"><span className="login-trust-icon"><HomeFixMark /></span><span><strong>Votre maison, bien entourée</strong><small>Des professionnels de confiance</small></span><span className="login-trust-check">✓</span></div>
       <div className="login-float-card login-rating-card"><span className="login-rating-stars">★★★★★</span><strong>4,9 <small>sur 5</small></strong></div>
       <span className="login-sparkle login-sparkle-one">✳</span><span className="login-sparkle login-sparkle-two">✳</span>
+      </div>
       <p className="login-visual-caption">Le confort de votre maison, à portée de main.</p>
     </div>
   );
@@ -37,9 +40,9 @@ export default function LoginPage() {
     <main className="login-page">
       <div className="login-shell">
         <section className="login-panel" aria-labelledby="login-title">
-          <Link href="/" className="login-brand" aria-label="HomeFix TN, accueil">
+          <Link href="/" className="login-brand" aria-label="HomeFix, accueil">
             <span className="login-brand-mark"><HomeFixMark /></span>
-            <span>homefix<span className="login-brand-tn">.tn</span></span>
+            <span>homefix</span>
           </Link>
 
           <div className="login-content">
@@ -53,7 +56,7 @@ export default function LoginPage() {
           <p className="login-footer"><span aria-hidden="true">✳</span> Fait avec soin en Tunisie</p>
         </section>
 
-        <aside className="login-aside" aria-label="Bienvenue chez HomeFix TN">
+        <aside className="login-aside" aria-label="Bienvenue chez HomeFix">
           <div className="login-aside-top"><span>HOMEFIX TN</span><span><i /> À vos côtés, partout en Tunisie</span></div>
           <HomeIllustration />
           <div className="login-aside-copy"><span className="login-aside-kicker">Votre maison entre de bonnes mains</span><h2>Le bon coup de main,<br /><span>au bon moment.</span></h2><p>Un réseau de pros de confiance pour prendre soin de votre chez-vous, tout simplement.</p></div>

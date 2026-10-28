@@ -14,7 +14,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
 
   return <div className="admin-app">
     <aside className="admin-sidebar">
-      <Link href="/" className="admin-brand"><span className="admin-brand-mark"><AdminIcon name="home" size={20}/></span><span>homefix<span>.tn</span><small>ADMINISTRATION</small></span></Link>
+      <Link href="/" className="admin-brand"><span className="admin-brand-mark"><AdminIcon name="home" size={20}/></span><span>homefix<small>ADMINISTRATION</small></span></Link>
       <div className="admin-nav-label">GESTION DE LA PLATEFORME</div>
       <nav aria-label="Navigation administration"><Link href="/admin/professionnels" className="admin-nav-link active"><AdminIcon name="shield" size={17}/>Validation des professionnels</Link></nav>
       <Link href="/admin/professionnels" className="admin-mobile-link"><AdminIcon name="shield" size={17}/>Validation des professionnels</Link>
