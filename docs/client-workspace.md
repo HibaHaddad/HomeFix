@@ -1,18 +1,28 @@
 # Espace Client HomeFix TN
 
-Implémentation locale issue de `Cahier_des_charges_HomeFix_TN.docx` (sections 6–8, 11, 14 et indication finale sur l’acompte). Les composants de recherche, filtres et profils professionnels sont conservés ; le profil reçoit seulement les actions favoris et attribution d’une demande existante.
+Implémentation locale issue de `Cahier_des_charges_HomeFix_TN.docx` (sections 6–8, 11, 14 et indication finale sur l’acompte). Les composants de recherche, filtres et profils professionnels sont conservés ; le profil réutilise les favoris et affiche désormais les créneaux réels publiés par le professionnel.
 
 ## Parcours
 
 `/dashboard` : statistiques PostgreSQL, demandes, agenda, raccourcis et entretien.
 
-`/dashboard/demandes` : titre, catégorie, urgence, description, adresse, disponibilités, équipement et pièces jointes. Une demande sans professionnel est enregistrée sans être diffusée. Depuis le profil d’un professionnel, le client peut lui transmettre une demande existante. En cas d’échec d’un fichier, la demande reste enregistrée et l’envoi peut être repris.
+`/dashboard/demandes` : consultation et suivi uniquement, avec filtres par recherche, statut, professionnel et date. Aucun formulaire de création. Les cartes affichent le créneau, le dernier devis et le lien vers la conversation. L’état vide renvoie vers l’annuaire.
 
-`/dashboard/messagerie` : conversations persistées, fichiers, partage GPS après consentement explicite, horodatage et état envoyé/lu. Actualisation toutes les 5 secondes lorsque l’onglet est visible ; aucun indicateur de présence ou de livraison simulé. L’historique des messages utilise un curseur.
+Création depuis `/dashboard/professionnels/:id` : le client choisit un créneau publié dans le calendrier, décrit brièvement le problème et précise l’adresse et les photos facultatives. La demande est liée à un professionnel obligatoire (`professionalId NOT NULL`) et à un fil de conversation. Aucun créneau n’est inventé en l’absence de disponibilités.
+
+Création depuis le chat : le bouton « Demander une intervention » ouvre une boîte de dialogue avec les mêmes créneaux réels et un formulaire court. Une conversation libre ne crée pas de demande d’intervention : les conteneurs de conversation ont `kind=MESSAGE`, `status=CONVERSATION`, tandis que les interventions ont `kind=INTERVENTION` et référencent leur conversation par `conversationId`. Les demandes historiques `QUOTE` sont conservées.
+
+`/professionnel/reservations` : calendrier avec popup par date et panneau des disponibilités et réservations. Une plage publiée est découpée en heures réservables. Modifier les horaires conserve les réservations existantes, même hors de la nouvelle plage. Voir [le fonctionnement de l’agenda](professional-agenda.md).
+
+`/professionnel/demandes`, `/professionnel/messagerie`, `/professionnel/interventions` : acceptation/refus motivé, contre-proposition de créneau, devis détaillé ou révisé, chat, suivi et fin d’intervention. Les écrans des deux rôles utilisent les mêmes données PostgreSQL et contrôles métier.
+
+`/dashboard/messagerie` : conversations persistées, fichiers, partage GPS après consentement explicite, horodatage et état envoyé/lu. Devis, contre-propositions et actions d’intervention intégrés à la conversation. Actualisation toutes les 5 secondes lorsque l’onglet est visible ; aucun indicateur de présence ou de livraison simulé. L’historique des messages utilise un curseur.
 
 `/dashboard/devis` : détail, validité, acceptation, refus, contre-proposition. Le professionnel doit émettre un nouveau devis après négociation. Une acceptation crée le document de suivi du prix et de l’acompte, en millimes entiers.
 
-`/dashboard/reservations` : calendrier, proposition et modification d’un créneau, confirmation professionnelle, annulation motivée. Les créneaux sont interprétés en heure de Tunis. Les chevauchements et mutations concurrentes sont contrôlés dans une transaction Serializable. Les modifications d’un créneau commencé passent par l’assistance.
+`/dashboard/reservations` : calendrier des créneaux demandés et réservés, avec accès aux actions de la conversation. La réservation est `PROPOSED` après la demande. Une contre-proposition professionnelle devient `COUNTER_PROPOSED` et doit être acceptée par le client. Le créneau accepté devient `ACCEPTED` tant que le devis ne l’est pas ; il devient `CONFIRMED` seulement lorsque le créneau et le devis sont acceptés, dans l’un ou l’autre ordre. Accepter un devis seul ne confirme donc pas le rendez-vous.
+
+Les créneaux sont interprétés en heure de Tunis. Les transactions Serializable et une contrainte d’exclusion GiST PostgreSQL empêchent les chevauchements dès la nouvelle proposition (`PROPOSED`, `COUNTER_PROPOSED`, `ACCEPTED`, `CONFIRMED`), même lors d’écritures concurrentes. Les anciens rendez-vous et propositions sont conservés par la migration de compatibilité décrite dans [la documentation de l’agenda](professional-agenda.md). Les propositions bloquent leur créneau, mais ne valent pas confirmation : l’accord sur le créneau et le devis reste obligatoire.
 
 `/dashboard/interventions` : historique d’événements et validation de fin par le client. Les statuts en route → en cours → terminée sont réservés au professionnel affecté.
 
@@ -28,15 +38,16 @@ Les listes de demandes sont paginées par 100 avec un lien vers les plus ancienn
 
 ## API et sécurité
 
-- `POST /api/client/espace` : mutations du client actif ; les identifiants du compte viennent exclusivement de la session.
-- `GET /api/interactions?before=:id` : demandes du professionnel approuvé affecté (50 par page), avec les coordonnées du client concerné.
-- `POST /api/interactions` : `message.send`, `quote.propose`, `booking.confirm`, `intervention.status` pour le professionnel affecté. Cette API prépare les échanges sans modifier les interfaces Admin/Professionnel existantes.
+- `POST /api/client/espace` : `conversation.open`, `request.create` avec `source=PROFILE|CHAT`, `professionalId` et `slotId` obligatoires ; `booking.accept` pour la contre-proposition et les autres mutations du client actif ; les identifiants du compte viennent exclusivement de la session.
+- `GET /api/interactions?before=:id` : demandes du professionnel approuvé affecté (100 par page), avec les coordonnées du client concerné.
+- `POST /api/interactions` : `message.send`, `quote.propose`, `booking.confirm`, `booking.counter`, `booking.reject`, `intervention.status` pour le professionnel affecté ; `availability.create` et `availability.remove` pour gérer ses créneaux. Les écrans Professionnel utilisent réellement ces opérations.
+- `GET /api/client/professionnels/:id/disponibilites?month=YYYY-MM` : disponibilités publiées encore libres, sans identité des autres clients ni détail des rendez-vous occupés.
 - `GET /api/client/conversations/:requestId?after=:messageId` : messages accessibles seulement aux deux participants. `POST` marque les messages reçus comme lus.
 - `POST /api/client/fichiers` : multipart (`requestId`, `file`, `chat=true` pour le chat). JPEG, PNG, WebP, MP4 et PDF vérifiés par signature, 8 Mo par fichier et 20 fichiers par demande.
 - `GET /api/client/fichiers/:id` : téléchargement privé après vérification du participant, `no-store`, `nosniff`, CSP sandbox. Les octets ne sont jamais inclus dans les données des pages.
 - `GET/POST /api/client/photo`, `POST /api/client/compte` : photo privée et mot de passe.
 
-Les mutations vérifient l’origine, le rôle, le propriétaire et les transitions. Les décisions de devis, réservations et confirmations sont atomiques. Une nouvelle tentative après conflit concurrent reçoit une réponse 409.
+Les mutations vérifient l’origine, le rôle, le propriétaire et les transitions. Les décisions de devis, réservations et confirmations sont atomiques. Les conflits de transaction ou d’exclusion renvoient HTTP 409, sans exposer les détails SQL. Une nouvelle tentative après conflit concurrent reçoit une réponse 409.
 
 ## Services externes à raccorder
 
@@ -56,7 +67,7 @@ Les notifications et rappels sont internes à l’espace. Aucun SMS, e-mail, pus
 
 Les fichiers sont stockés dans PostgreSQL, avec limites, pour fonctionner avec l’infrastructure actuelle. Un stockage objet privé pourra remplacer les octets en base. La messagerie utilise le polling, sans infrastructure WebSocket.
 
-Les réponses/modérations de l’administration et les boutons de gestion côté Professionnel restent à intégrer dans leurs espaces respectifs ; leurs interfaces existantes n’ont pas été refaites.
+Les réponses et modérations de l’administration restent à intégrer dans son espace. Les parcours Professionnel de demandes, agenda, messagerie et interventions sont fonctionnels ; les autres modules de cet espace sont conservés.
 
 ## Installation et vérification
 
@@ -69,10 +80,12 @@ node node_modules/prisma/build/index.js migrate deploy
 node node_modules/typescript/bin/tsc --noEmit
 node --test tests/client-domain.test.mjs
 # Application démarrée sur localhost:3000 :
-node --import dotenv/config --import ./tests/helpers/register-ts.mjs --test tests/client-workspace.integration.test.mjs tests/directory.integration.test.mjs
+node --import dotenv/config --import ./tests/helpers/register-ts.mjs --test --test-concurrency=1 tests/client-workspace.integration.test.mjs tests/directory.integration.test.mjs
 npm run build
 ```
 
 Le test d’intégration crée des comptes de test isolés dans la base de développement configurée, exerce les API et nettoie ces comptes dans `finally`. Ne pas l’exécuter sur une base de production.
 
 Sous Windows, un serveur déjà actif peut verrouiller le moteur Prisma pendant `generate`. Arrêter le serveur pour régénérer normalement, puis le relancer. Pendant l’implémentation, le client a été généré dans un dossier temporaire et ses sources actualisées en conservant le même binaire moteur verrouillé.
+
+Les tests d’intégration doivent être exécutés séquentiellement : ils créent et suppriment des comptes qui seraient visibles pendant les assertions de comptage de l’annuaire. Ils vérifient les deux ordres d’acceptation, les propositions alternatives et deux acceptations simultanées, ainsi que le blocage SQL direct d’un chevauchement.

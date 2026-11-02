@@ -1,14 +1,9 @@
 import Link from "next/link";
+import HomeFixBrand, { HomeFixMark } from "@/components/HomeFixBrand";
 import AuthForm from "@/components/AuthForm";
 import "../auth-theme.css";
 
-function HomeFixMark() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14.7 6.3a5 5 0 0 0-6.4 6.4L3 18l3 3 5.3-5.3a5 5 0 0 0 6.4-6.4L14 13l-3-3 3.7-3.7Z" />
-    </svg>
-  );
-}
+
 
 function HomeIllustration() {
   return (
@@ -40,10 +35,7 @@ export default function LoginPage() {
     <main className="login-page">
       <div className="login-shell">
         <section className="login-panel" aria-labelledby="login-title">
-          <Link href="/" className="login-brand" aria-label="HomeFix, accueil">
-            <span className="login-brand-mark"><HomeFixMark /></span>
-            <span>homefix</span>
-          </Link>
+          <HomeFixBrand/>
 
           <div className="login-content">
             <div className="login-eyebrow"><span /> Votre espace HomeFix</div>

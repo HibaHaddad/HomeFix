@@ -1,0 +1,39 @@
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  flex-shrink: 0;
+  color: #1e302a;
+  font: 800 21px Arial, Helvetica, sans-serif;
+  letter-spacing: -1px;
+  text-decoration: none;
+}
+.mark {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #167c68;
+  color: #fff;
+  transform: rotate(-5deg);
+}
+.mark svg { width: 20px; height: 20px; }
+.copy { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.name { font: inherit; color: inherit; letter-spacing: inherit; }
+.subtitle { margin-top: 5px; color: #687970; font: 750 8px Arial, Helvetica, sans-serif; letter-spacing: 1.2px; }
+.inverse { color: #fff; }
+.inverse .mark {
+  border: 1px solid #ffffff20;
+  background: #ffffff15;
+  color: #ffd09a;
+  box-shadow: inset 0 1px #ffffff17;
+}
+.inverse .subtitle { color: #a9c8b7; }
+.brand:focus-visible { outline: 2px solid #167c68; outline-offset: 5px; border-radius: 4px; }
+.inverse:focus-visible { outline-color: #ffbd78; }
+@media (max-width: 900px) {
+  .brand { font-size: 19px; }
+  .mark { width: 31px; height: 31px; flex-basis: 31px; }
+}

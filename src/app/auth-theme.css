@@ -22,7 +22,7 @@
   border-color: var(--auth-line);
   box-shadow: 0 20px 60px #293e320c;
 }
-.login-panel { background: var(--auth-paper); }
+.login-panel { background: var(--auth-surface); }
 /* Keep illustration, caption and introduction in separate document-flow rows. */
 .login-page .login-shell { height: auto; min-height: 720px; }
 .login-page .login-aside {

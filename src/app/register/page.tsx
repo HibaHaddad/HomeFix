@@ -1,17 +1,16 @@
 import Link from "next/link";
+import HomeFixBrand from "@/components/HomeFixBrand";
 import AuthForm from "@/components/AuthForm";
 import "../auth-theme.css";
 
-function BrandMark() {
-  return <span className="register-brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a5 5 0 0 0-6.4 6.4L3 18l3 3 5.3-5.3a5 5 0 0 0 6.4-6.4L14 13l-3-3 3.7-3.7Z" /></svg></span>;
-}
+
 
 export default function RegisterPage() {
   return (
     <main className="register-page">
       <div className="register-shell">
         <header className="register-header">
-          <Link href="/" className="register-brand" aria-label="HomeFix, accueil"><BrandMark /><span>homefix</span></Link>
+          <HomeFixBrand/>
           <p>Déjà membre ? <Link href="/login">Se connecter <span aria-hidden="true">↗</span></Link></p>
         </header>
         <div className="register-content-grid">

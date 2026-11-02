@@ -1,3 +1,4 @@
+import { hasAllowedRequestOrigin } from "@/lib/request-origin";
 import { getClient } from "@/app/lib/client-access";
 import { prisma } from "@/app/lib/prisma";
 export async function GET() {
@@ -7,7 +8,7 @@ export async function GET() {
   return new Response(new Uint8Array(user.profilePhoto), { headers: { "Content-Type": user.profilePhotoMime, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } });
 }
 export async function POST(request: Request) {
-  if (request.headers.get("origin") && request.headers.get("origin") !== new URL(request.url).origin) return Response.json({ error: "Origine non autorisée." }, { status: 403 });
+  if (!hasAllowedRequestOrigin(request)) return Response.json({ error: "Origine non autorisée." }, { status: 403 });
   const client = await getClient(); if (!client) return Response.json({ error: "Connexion requise." }, { status: 401 });
   if (Number(request.headers.get("content-length") || 0) > 5 * 1024 * 1024 + 65536) return Response.json({ error: "Photo limitée à 5 Mo." }, { status: 413 });
   const data = await request.formData().catch(() => null); const file = data?.get("photo");

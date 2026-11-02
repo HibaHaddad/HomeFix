@@ -1,11 +1,16 @@
 import { notFound } from "next/navigation";
 import { getSession } from "@/app/lib/session";
 import { prisma } from "@/app/lib/prisma";
+import ProfessionalInteractions from "@/components/professional/ProfessionalInteractions";
+import { requestInclude } from "@/app/lib/client-workspace";
 import ProfessionalSection from "@/components/professional/ProfessionalSection";
+import NotificationsCenter from "@/components/notifications/NotificationsCenter";
+import ProfessionalReviews from "@/components/professional/ProfessionalReviews";
+import ProfessionalPayments from "@/components/professional/ProfessionalPayments";
 
 const sections = ["tableau-de-bord", "demandes", "reservations", "interventions", "messagerie", "profil", "revenus", "avis", "notifications", "parametres"] as const;
 
-export default async function ProfessionalPage({ params }: PageProps<"/professionnel/[section]">) {
+export default async function ProfessionalPage({ params, searchParams }: PageProps<"/professionnel/[section]">) {
   const { section } = await params;
   if (!sections.includes(section as (typeof sections)[number])) notFound();
   const session = await getSession();
@@ -16,13 +21,27 @@ export default async function ProfessionalPage({ params }: PageProps<"/professio
   });
   if (!user || user.role !== "PROFESSIONAL") notFound();
   if (user.status !== "APPROVED") notFound();
-  if (section === "demandes" || section === "messagerie") {
-    const requests = await prisma.serviceRequest.findMany({
-      where: { professionalId: session.userId, ...(section === "messagerie" ? { kind: "MESSAGE" } : {}) },
-      select: { id: true, kind: true, message: true, createdAt: true, client: { select: { name: true, email: true, phone: true } } },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 100,
-    });
-    return <><div className="pro-page-heading"><div><div className="pro-eyebrow">VOTRE ACTIVITÉ</div><h1>{section === "messagerie" ? "Messages clients" : "Demandes de service"}</h1><p>Les 100 dernières demandes reçues. Répondez directement au client par e-mail ou téléphone.</p></div></div><div className="pro-incoming-requests">{requests.length ? requests.map((r) => <article className="pro-panel pro-incoming-request" key={r.id}><span>{r.kind === "QUOTE" ? "DEMANDE DE DEVIS" : "PRISE DE CONTACT"} · #{r.id}</span><h2>{r.client.name}</h2><time>{r.createdAt.toLocaleString("fr-TN", { timeZone: "Africa/Tunis" })}</time><p>{r.message}</p><div><a href={`mailto:${r.client.email}?subject=${encodeURIComponent(`HomeFix — Réponse à votre demande #${r.id}`)}`}>Répondre par e-mail ↗</a>{r.client.phone && /^\+?[\d\s]{8,20}$/.test(r.client.phone) && <a href={`tel:${r.client.phone.replace(/\s/g, "")}`}>Appeler le client ↗</a>}</div></article>) : <section className="pro-panel"><div className="pro-empty"><h3>Aucune demande pour le moment</h3><p>Les prises de contact et demandes de devis des clients apparaîtront ici.</p></div></section>}</div></>;
+  if (section === "avis") return <ProfessionalReviews professionalId={session.userId}/>;
+  if (section === "revenus") return <ProfessionalPayments professionalId={session.userId}/>;
+  if (section === "notifications") return <><div className="pro-page-heading"><div><div className="pro-eyebrow"><span/>VOTRE ACTIVITÉ</div><h1>Notifications</h1><p>Les nouvelles de vos clients et interventions, au même endroit.</p></div></div><NotificationsCenter/></>;
+  if (section === "reservations") return <ProfessionalInteractions section={section} initialRequests={[]} initialSlots={[]}/>;
+  if (["tableau-de-bord", "demandes", "messagerie", "reservations", "interventions"].includes(section)) {
+    const [requests, slots] = await Promise.all([
+      prisma.serviceRequest.findMany({ where: { professionalId: session.userId }, include: { ...requestInclude, client: { select: { id: true, name: true, phone: true, email: true } } }, orderBy: { id: "desc" }, take: 100 }),
+      prisma.availabilitySlot.findMany({ where: { professionalId: session.userId, active: true, startsAt: { gt: new Date() } }, orderBy: { startsAt: "asc" }, take: 500 }),
+    ]);
+    const selected = Number((await searchParams).demande);
+    if (Number.isSafeInteger(selected) && selected > 0 && !requests.some((r) => r.id === selected)) {
+      const record = await prisma.serviceRequest.findFirst({ where: { id: selected, professionalId: session.userId }, include: { ...requestInclude, client: { select: { id: true, name: true, phone: true, email: true } } } });
+      if (record) requests.unshift(record);
+    }
+    // A selected intervention can belong to an older conversation outside this page.
+    const parentId = requests.find((r) => r.id === selected)?.conversationId;
+    if (parentId && !requests.some((r) => r.id === parentId)) {
+      const thread = await prisma.serviceRequest.findFirst({ where: { id: parentId, professionalId: session.userId }, include: { ...requestInclude, client: { select: { id: true, name: true, phone: true, email: true } } } });
+      if (thread) requests.unshift(thread);
+    }
+    return <ProfessionalInteractions section={section} initialRequests={JSON.parse(JSON.stringify(requests))} initialSlots={JSON.parse(JSON.stringify(slots))} selected={Number.isSafeInteger(selected) ? selected : undefined}/>;
   }
   const photoState = section === "profil" ? await prisma.$queryRaw<Array<{ hasPhoto: boolean }>>`
     SELECT "profilePhotoMime" IS NOT NULL AS "hasPhoto"

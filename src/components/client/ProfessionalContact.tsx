@@ -1,27 +1,10 @@
 "use client";
-
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import Icon from "@/components/professional/ProfessionalIcon";
-
-export default function ProfessionalContact({ professionalId, initialKind }: { professionalId: number; initialKind: "QUOTE" | "MESSAGE" }) {
-  const [kind, setKind] = useState(initialKind);
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  return <form id="contact" className="client-contact-form" onSubmit={async (e) => {
-    e.preventDefault(); setBusy(true); setError(""); setSuccess("");
-    try {
-      const response = await fetch("/api/client/demandes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ professionalId, kind, message }) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "L’envoi a échoué.");
-      setSuccess(result.message); setMessage("");
-    } catch (error) { setError(error instanceof Error ? error.message : "Impossible de joindre le serveur."); }
-    finally { setBusy(false); }
-  }}><span className="eyebrow">PARLONS DE VOTRE PROJET</span><h2>Le premier pas, c’est un échange.</h2><p>Décrivez votre besoin. Le professionnel recevra votre demande dans son espace HomeFix.</p>
-    <label>Votre demande<select value={kind} onChange={(e) => setKind(e.target.value as "QUOTE" | "MESSAGE")}><option value="QUOTE">Demander un devis</option><option value="MESSAGE">Contacter le professionnel</option></select></label>
-    <label>Votre message<textarea rows={5} required minLength={20} maxLength={3000} placeholder="Nature des travaux, zone d’intervention, dates souhaitées…" value={message} onChange={(e) => setMessage(e.target.value)}/></label><small>Vos nom, e-mail et téléphone de compte seront partagés avec ce professionnel pour sa réponse.</small>
-    {error && <p className="client-feedback error" role="alert">{error}</p>}{success && <p className="client-feedback success" role="status">{success}</p>}
-    <button type="submit" className="button button-dark" disabled={busy}>{busy ? "Envoi en cours…" : kind === "QUOTE" ? "Envoyer ma demande de devis" : "Envoyer mon message"}<Icon name="arrow" size={16}/></button>
-  </form>;
+import { MessageSquare } from "lucide-react";
+import InterventionComposer from "./InterventionComposer";
+import { workspaceAction } from "./WorkspaceForm";
+export default function ProfessionalContact({ professionalId, address }: { professionalId: number; address: string }) {
+  const router = useRouter(); const [busy, setBusy] = useState(false); const [error, setError] = useState("");
+  return <section id="contact" className="client-contact-form"><span className="eyebrow">LES DISPONIBILITÉS DU PROFESSIONNEL</span><h2>Choisissez votre créneau.</h2><p>Seuls les créneaux publiés et encore libres sont proposés. Le rendez-vous sera confirmé après acceptation du professionnel et du devis.</p><InterventionComposer professionalId={professionalId} address={address} inline/><div className="flow-contact-divider"><span>Vous préférez en discuter d’abord ?</span><button className="cx-btn secondary" disabled={busy} onClick={async () => { setBusy(true); setError(""); try { const result = await workspaceAction("conversation.open", { professionalId }); router.push(`/dashboard/messagerie?demande=${result.id}`); } catch (e) { setError(e instanceof Error ? e.message : "Conversation indisponible."); } finally { setBusy(false); } }}><MessageSquare size={16}/>{busy ? "Ouverture…" : "Discuter avec ce professionnel"}</button></div>{error && <p className="cx-feedback is-error" role="alert">{error}</p>}</section>;
 }

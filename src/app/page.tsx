@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import Brand from "@/components/HomeFixBrand";
 import { useEffect, useRef, useState } from "react";
 import { storyIds, useHouseStory } from "@/components/landing/useHouseStory";
 import type { HouseSceneState } from "@/components/landing/scene-state";
@@ -30,9 +31,7 @@ const interventions = [
 function Arrow({ down = false }: { down?: boolean }) {
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className={down ? "hf-arrow is-down" : "hf-arrow"}><path d="M5 19 19 5M5 5h14v14" stroke="currentColor" strokeWidth="1.5" /></svg>;
 }
-function Brand() {
-  return <Link href="/" className="hf-brand" aria-label="HomeFix, accueil"><span className="hf-brand-mark"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a5 5 0 0 0-6.4 6.4L3 18l3 3 5.3-5.3a5 5 0 0 0 6.4-6.4L14 13l-3-3 3.7-3.7Z" /></svg></span><span>homefix</span></Link>;
-}
+
 function Action({ children = "Trouver mon professionnel" }: { children?: React.ReactNode }) {
   return <Link href="/register" className="hf-button"><span>{children}</span><span className="hf-button-icon"><Arrow /></span></Link>;
 }

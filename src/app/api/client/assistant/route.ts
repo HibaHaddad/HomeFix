@@ -1,7 +1,8 @@
+import { hasAllowedRequestOrigin } from "@/lib/request-origin";
 import { getClient } from "@/app/lib/client-access";
 import { categories, text } from "@/lib/client-domain";
 export async function POST(request: Request) {
-  if (request.headers.get("origin") && request.headers.get("origin") !== new URL(request.url).origin) return Response.json({ error: "Origine non autorisée." }, { status: 403 });
+  if (!hasAllowedRequestOrigin(request)) return Response.json({ error: "Origine non autorisée." }, { status: 403 });
   if (!await getClient()) return Response.json({ error: "Connexion requise." }, { status: 401 });
   const { HOMEFIX_AI_URL: url, HOMEFIX_AI_KEY: key, HOMEFIX_AI_MODEL: model } = process.env;
   if (!url || !key || !model) return Response.json({ error: "L’assistant IA n’est pas encore configuré. Vous pouvez créer votre demande manuellement." }, { status: 503 });

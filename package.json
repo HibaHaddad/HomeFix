@@ -3,26 +3,36 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "tsx server.ts",
     "build": "next build",
-    "start": "next start",
+    "start": "tsx server.ts --production",
     "lint": "eslint",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev"
+    "db:migrate": "prisma migrate dev",
+    "stripe:setup": "node scripts/stripe-local.mjs setup",
+    "stripe:listen": "node scripts/stripe-local.mjs listen"
   },
   "dependencies": {
+    "@pdf-lib/fontkit": "^1.1.1",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.2",
+    "@stripe/stripe-js": "^10.2.0",
     "gsap": "^3.15.0",
     "jose": "^6.2.12",
     "lucide-react": "^1.63.0",
     "next": "16.3.8",
+    "pdf-lib": "^1.17.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "three": "^0.186.1"
+    "socket.io": "^4.8.4",
+    "socket.io-client": "^4.8.4",
+    "stripe": "^23.1.0",
+    "three": "^0.186.1",
+    "tsx": "^4.23.15"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.3",
+    "@stripe/cli": "^1.55.6",
     "@tailwindcss/postcss": "^4",
     "@types/bcrypt": "^6.0.0",
     "@types/bcryptjs": "^2.4.6",

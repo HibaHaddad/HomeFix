@@ -60,14 +60,14 @@ test("HTTP endpoints enforce authentication and validate client requests", async
   assert.equal((await fetch(`${base}/api/client/professionnels/0/photo`, { headers })).status, 404);
   assert.equal((await fetch(`${base}/api/client/demandes`, { method: "POST", headers: { ...headers, Origin: "https://foreign.example", "Content-Type": "application/json" }, body: "{}" })).status, 403);
   assert.equal((await fetch(`${base}/api/client/demandes`, { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: "{}" })).status, 400);
-  assert.equal((await fetch(`${base}/api/client/demandes`, { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ professionalId: 2147483647, kind: "QUOTE", message: "Demande de test vers un identifiant absent." }) })).status, 404);
+  assert.equal((await fetch(`${base}/api/client/demandes`, { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ source: "PROFILE", slotId: 2147483647, professionalId: 2147483647, kind: "QUOTE", message: "Demande de test vers un identifiant absent." }) })).status, 404);
   const page = await fetch(`${base}/dashboard/professionnels`, { headers });
   assert.equal(page.status, 200);
   assert.match(await page.text(), /Le bon professionnel/);
   if (body.professionals[0]) {
     const profile = await fetch(`${base}/dashboard/professionnels/${body.professionals[0].id}?action=devis`, { headers });
     assert.equal(profile.status, 200);
-    assert.match(await profile.text(), /Envoyer ma demande de devis/);
+    assert.match(await profile.text(), /Envoyer la demande de réservation/);
   }
   const hidden = await prisma.user.findFirst({ where: { role: "PROFESSIONAL", OR: [{ status: { not: "APPROVED" } }, { isPublic: false }, { termsAccepted: false }] }, select: { id: true } });
   if (hidden) {

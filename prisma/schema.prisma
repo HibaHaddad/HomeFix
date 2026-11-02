@@ -49,6 +49,7 @@ model User {
   equipment         Equipment[]
   notifications     ClientNotification[]
   complaints        Complaint[]
+  availabilitySlots AvailabilitySlot[]
   notificationEnabled Boolean @default(true)
   certificationPdf  Bytes?
   termsAccepted     Boolean  @default(false)
@@ -61,10 +62,11 @@ model ProfessionalReview {
   id             Int @id @default(autoincrement())
   professionalId Int
   clientId       Int
-  rating         Int
+  rating         Int?
   comment        String
   published      Boolean @default(false)
   createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
   requestId      Int? @unique
   quality        Int?
   punctuality    Int?
@@ -80,7 +82,9 @@ model ProfessionalReview {
 model ServiceRequest {
   id             Int @id @default(autoincrement())
   clientId       Int
-  professionalId Int?
+  professionalId Int
+  conversationId Int?
+  conversationKey String? @unique
   kind           String
   message        String
   title          String @default("Demande de service")
@@ -94,7 +98,9 @@ model ServiceRequest {
   updatedAt      DateTime @default(now()) @updatedAt
   createdAt      DateTime @default(now())
   client         User @relation("SentRequests", fields: [clientId], references: [id], onDelete: Cascade)
-  professional   User? @relation("ReceivedRequests", fields: [professionalId], references: [id], onDelete: Cascade)
+  professional   User @relation("ReceivedRequests", fields: [professionalId], references: [id], onDelete: Cascade)
+  conversation   ServiceRequest? @relation("ConversationInterventions", fields: [conversationId], references: [id])
+  interventions  ServiceRequest[] @relation("ConversationInterventions")
   equipment      Equipment? @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
   attachments    ClientAttachment[]
   messages       ChatMessage[]
@@ -106,20 +112,26 @@ model ServiceRequest {
 
   @@index([professionalId, createdAt])
   @@index([clientId, createdAt])
+  @@index([conversationId])
 }
 
 model ChatMessage {
   id Int @id @default(autoincrement())
   requestId Int
   senderId Int
+  clientNonce String? @unique
+  quoteId Int?
+  deliveredAt DateTime?
   text String
   latitude Float?
   longitude Float?
   readAt DateTime?
   createdAt DateTime @default(now())
   request ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  quote Quote? @relation(fields: [quoteId], references: [id], onDelete: SetNull)
   attachments ClientAttachment[]
   @@index([requestId, createdAt])
+  @@index([quoteId])
 }
 
 model ClientAttachment {
@@ -147,6 +159,7 @@ model Quote {
   createdAt DateTime @default(now())
   request ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
   invoice ClientInvoice?
+  messages ChatMessage[]
   @@index([requestId, status])
 }
 
@@ -154,11 +167,25 @@ model Booking {
   id Int @id @default(autoincrement())
   requestId Int @unique
   professionalId Int
+  slotId Int?
   startsAt DateTime
   endsAt DateTime
   status String @default("PROPOSED")
+  holdsSlot Boolean @default(true)
   reason String?
+  slot AvailabilitySlot? @relation(fields: [slotId], references: [id], onDelete: Restrict)
   request ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  @@index([professionalId, startsAt, endsAt])
+}
+
+model AvailabilitySlot {
+  id Int @id @default(autoincrement())
+  professionalId Int
+  startsAt DateTime
+  endsAt DateTime
+  active Boolean @default(true)
+  professional User @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  bookings Booking[]
   @@index([professionalId, startsAt, endsAt])
 }
 
@@ -181,8 +208,40 @@ model ClientInvoice {
   paidMillimes Int @default(0)
   status String @default("UNPAID")
   paymentReference String? @unique
+  paidAt DateTime?
+  receiptUrl String?
+  receiptNumber String?
+  testPaid Boolean @default(false)
+  payments CheckoutPayment[]
   createdAt DateTime @default(now())
   quote Quote @relation(fields: [quoteId], references: [id])
+}
+
+model CheckoutPayment {
+  id String @id @default(uuid())
+  invoiceId Int
+  amountMillimes Int
+  priorPaidMillimes Int @default(0)
+  stripeAmount Int?
+  exchangeRatePpm Int?
+  currency String @default("tnd")
+  uiMode String @default("hosted_page")
+  status String @default("CREATING")
+  sessionId String? @unique
+  paymentIntentId String? @unique
+  merchantAccountId String
+  merchantCountry String
+  livemode Boolean
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  invoice ClientInvoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  @@index([invoiceId, createdAt])
+}
+
+model StripeWebhookEvent {
+  id String @id
+  type String
+  processedAt DateTime @default(now())
 }
 
 model Equipment {
@@ -223,11 +282,13 @@ model ClientNotification {
   id Int @id @default(autoincrement())
   userId Int
   title String
+  type String @default("INFO")
   href String
   readAt DateTime?
   createdAt DateTime @default(now())
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, createdAt])
+  @@index([userId, readAt])
 }
 
 model Complaint {

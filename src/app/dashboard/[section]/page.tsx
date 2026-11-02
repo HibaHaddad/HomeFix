@@ -12,10 +12,15 @@ export default async function ClientSectionPage({ params, searchParams }: { para
   const search = await searchParams;
   const selected = Number(search.demande);
   const cursor = Number(search.before);
-  const workspace = await clientWorkspace(client.id, Number.isSafeInteger(cursor) && cursor > 0 ? cursor : undefined);
+  const workspace = await clientWorkspace(client.id, Number.isSafeInteger(cursor) && cursor > 0 ? cursor : undefined, section === "interventions" && Number.isSafeInteger(selected) && selected > 0 ? selected : undefined);
   if (Number.isSafeInteger(selected) && selected > 0 && !workspace.requests.some((r) => r.id === selected)) {
     const record = await prisma.serviceRequest.findFirst({ where: { id: selected, clientId: client.id }, include: requestInclude });
-    if (record) workspace.requests.unshift(record);
+    if (record) { if (record.kind === "MESSAGE") workspace.conversations.unshift(record); else workspace.requests.unshift(record); }
+  }
+  const parentId = workspace.requests.find((r) => r.id === selected)?.conversationId;
+  if (parentId && !workspace.conversations.some((r) => r.id === parentId)) {
+    const thread = await prisma.serviceRequest.findFirst({ where: { id: parentId, clientId: client.id }, include: requestInclude });
+    if (thread) workspace.conversations.unshift(thread);
   }
   const data = JSON.parse(JSON.stringify(workspace)) as WorkspaceData;
   return <ClientWorkspace section={section} data={data} selected={Number.isSafeInteger(selected) && selected > 0 ? selected : undefined}/>;
