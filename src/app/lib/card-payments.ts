@@ -106,10 +106,10 @@ export async function handleCardPaymentEvent(event: Stripe.Event, stripe = strip
     await tx.checkoutPayment.update({ where: { id: payment.id }, data: { paymentIntentId: intent.id, status: "SUCCEEDED" } });
     await tx.clientInvoice.update({ where: { id: invoice.id }, data: { status: "PAID", testPaid: true, paidMillimes: payment.priorPaidMillimes + payment.amountMillimes, paidAt: new Date(), paymentReference: intent.id, receiptUrl: charge?.receipt_url, receiptNumber: charge?.receipt_number } });
     await tx.serviceRequest.update({ where: { id: r.id }, data: { clientConfirmedAt: r.clientConfirmedAt || new Date() } });
-    await tx.requestEvent.create({ data: { requestId: r.id, actorId: r.clientId, status: "PAID", description: "Paiement TEST confirmé par Stripe · Aucun débit réel" } });
+    await tx.requestEvent.create({ data: { requestId: r.id, actorId: r.clientId, status: "PAID", description: "Paiement confirmé par Stripe · Aucun débit réel" } });
     const users = await tx.user.findMany({ where: { id: { in: [r.clientId, r.professionalId] }, notificationEnabled: true }, select: { id: true } });
     const notifications = [];
-    for (const user of users) notifications.push(await tx.clientNotification.create({ data: { userId: user.id, title: user.id === r.clientId ? "Paiement test réussi · Votre reçu est disponible" : "Le client a réglé l’intervention en mode TEST", type: "PAYMENT_RECEIVED", href: user.id === r.clientId ? `/dashboard/paiements/${r.id}` : `/professionnel/interventions?demande=${r.id}` } }));
+    for (const user of users) notifications.push(await tx.clientNotification.create({ data: { userId: user.id, title: user.id === r.clientId ? "Paiement réussi · Votre reçu est disponible" : "Le client a réglé l’intervention en mode TEST", type: "PAYMENT_RECEIVED", href: user.id === r.clientId ? `/dashboard/paiements/${r.id}` : `/professionnel/interventions?demande=${r.id}` } }));
     return { r, notifications };
   }, { timeout: 15000 });
   if (settled) {

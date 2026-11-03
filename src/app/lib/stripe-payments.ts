@@ -154,7 +154,7 @@ export async function handleStripeEvent(event: Stripe.Event, stripe = stripeClie
     await tx.requestEvent.create({ data: { requestId: r.id, actorId: r.clientId, status: "PAID", description: "Paiement TEST confirmé par Stripe · Aucun débit réel" } });
     const users = await tx.user.findMany({ where: { id: { in: [r.clientId, r.professionalId] }, notificationEnabled: true }, select: { id: true } });
     const notifications = [];
-    for (const user of users) notifications.push(await tx.clientNotification.create({ data: { userId: user.id, title: user.id === r.clientId ? "Paiement test réussi · Votre reçu est disponible" : "Le client a réglé l’intervention en mode TEST", type: "PAYMENT_RECEIVED", href: user.id === r.clientId ? `/dashboard/paiements/${r.id}` : `/professionnel/interventions?demande=${r.id}` } }));
+    for (const user of users) notifications.push(await tx.clientNotification.create({ data: { userId: user.id, title: user.id === r.clientId ? "Paiement réussi · Votre reçu est disponible" : "Le client a réglé l’intervention en mode TEST", type: "PAYMENT_RECEIVED", href: user.id === r.clientId ? `/dashboard/paiements/${r.id}` : `/professionnel/interventions?demande=${r.id}` } }));
     return { r, notifications };
   }, { timeout: 15000 });
   if (result) {

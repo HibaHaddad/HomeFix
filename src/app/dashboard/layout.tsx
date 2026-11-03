@@ -8,6 +8,7 @@ import "./workspace.css";
 import "./client-theme.css";
 import "./intervention-flow.css";
 import "./payments.css";
+import ClientAvatar from "@/components/client/ClientAvatar";
 import ClientNavigation from "@/components/client/ClientNavigation";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import NotificationProvider from "@/components/notifications/NotificationProvider";
@@ -19,7 +20,7 @@ import "./notifications.css";
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   if (!session) redirect("/login");
-  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { name: true, role: true, status: true } });
+  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { name: true, role: true, status: true, profilePhotoMime: true } });
   if (!user) redirect("/login");
   if (user.role === "ADMIN") redirect("/admin/professionnels");
   if (user.role === "PROFESSIONAL") redirect("/professionnel/tableau-de-bord");
@@ -28,7 +29,7 @@ export default async function ClientLayout({ children }: { children: React.React
   return <NotificationProvider key={session.userId} initialUnread={unreadCount}><div className="client-app cx-app"><ChatNotifications userId={session.userId}/><ClientNavigation/><div className="cx-main">
     <header className="client-header"><HomeFixBrand className="cx-header-brand"/>
       <nav aria-label="Espace client"><Link href="/dashboard">Mon espace <span className="cx-header-divider">/</span> <strong>Client</strong></Link></nav>
-      <div className="client-account"><NotificationBell/><span className="client-avatar">{user.name.slice(0, 1).toUpperCase()}</span><span><small>ESPACE CLIENT</small><strong>{user.name}</strong></span></div>
+      <div className="client-account"><NotificationBell/><ClientAvatar name={user.name} hasPhoto={!!user.profilePhotoMime}/><span><small>ESPACE CLIENT</small><strong>{user.name}</strong></span></div>
     </header>
     <main className="client-content">{children}</main>
     <footer className="client-footer"><HomeFixBrand/><span>Les bons pros. La tranquillité en plus.</span><a href="mailto:contact@homefix.tn">Besoin d’aide ? ↗</a></footer>

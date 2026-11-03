@@ -163,6 +163,17 @@
 .cx-app .cx-timeline > li > span { border-color: #167c68; }
 .cx-app .cx-timeline strong, .cx-app .cx-notification strong { color: #40584a; }
 .cx-app .cx-invoice-lines { color: #687970; }
+.directory-card-name > .directory-favorite { margin-left: auto; flex-shrink: 0; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid #e2e9e1; border-radius: 50%; background: #fff; color: #74847a; cursor: pointer; }
+.directory-card-name > .directory-favorite:hover, .directory-card-name > .directory-favorite.is-favorite { color: #187b62; background: #eaf4ee; border-color: #cce1d5; }
+.directory-card-name > .directory-favorite:disabled { cursor: wait; opacity: .6; }
+.cx-client-photo-avatar { position: relative; overflow: hidden; flex-shrink: 0; }
+.cx-client-photo-avatar > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cx-profile-photo-editor { flex-shrink: 0; max-width: 140px; }
+.cx-profile-photo-picker { position: relative; display: inline-flex; cursor: pointer; }
+.cx-profile-photo-picker:focus-within { outline: 2px solid #187b62; outline-offset: 4px; border-radius: 50%; }
+.cx-profile-photo-camera { position: absolute; right: -4px; bottom: -3px; display: grid; place-items: center; width: 26px; height: 26px; border: 2px solid #fff; border-radius: 50%; background: #187b62; color: #fff; }
+.cx-profile-photo-editor > small { display: block; margin-top: 8px; font-size: 11px; color: #187b62; line-height: 1.5; }
+.cx-profile-photo-editor > .cx-photo-error { color: #a44532; }
 .cx-app .cx-invoice-lines dd { color: #164e42; }
 .cx-app .cx-stars { color: #ba7934 !important; }
 .cx-app .cx-ai-orb { background: linear-gradient(145deg, #edf7ef, #fff1df); color: #167c68; }

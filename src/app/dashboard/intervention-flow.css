@@ -1,7 +1,20 @@
 .flow-dialog { position: fixed; inset: 0; box-sizing: border-box; width: min(900px, calc(100% - 32px)); max-height: calc(100dvh - 32px); margin: auto; padding: 22px; overflow-y: auto; border: 1px solid #dce9de; border-radius: 17px; background: #fffdf9; color: #164e42; box-shadow: 0 24px 80px #123f3630; }
 .flow-dialog::backdrop { background: #123f3666; backdrop-filter: blur(4px); }
 .flow-dialog h2 { font-size: 18px; margin: 0; }
+.flow-reservation-dialog { width: min(600px, calc(100% - 32px)); }
+.flow-reservation-dialog p { line-height: 1.7; overflow-wrap: anywhere; }
+.flow-reservation-dialog h2 { overflow-wrap: anywhere; }
+.cx-app .cx-calendar-grid > div > button { display: block; width: 100%; border: 0; text-align: left; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: inherit; font-size: 11px; background: #fff6e9; color: #925e24; padding: 5px 4px; border-radius: 3px; margin-top: 5px; }
+.cx-app .cx-calendar-grid > div > button.confirmed { background: #eaf4ee; color: #167c68; }
+.cx-app .cx-calendar-grid > div > button.expired { background: #f0f1ee; color: #737970; }
+.flow-calendar-status { display: block; margin-top: 3px; font-size: 10px; font-weight: 600; }
+.cx-app .cx-badge.status-expired { background: #f0f1ee; color: #737970; border-color: #dfe3dc; }
+.cx-app .cx-calendar-grid > div > button:focus-visible { outline: 2px solid #187b62; outline-offset: 1px; }
 .flow-composer { margin-top: 20px; }
+.cx-card-grid.flow-request-list { grid-template-columns: minmax(0, 1fr); }
+.flow-request-pagination { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 16px; margin-top: 24px; }
+.flow-request-pagination > span { color: #687970; font-size: 13px; }
+.flow-request-pagination > button:disabled { opacity: .45; cursor: default; }
 .flow-composer-layout, .flow-composer-details { display: grid; gap: 16px; min-width: 0; }
 .flow-dialog > .cx-panel-title { margin-bottom: 0; }
 .flow-dialog .flow-composer { margin-top: 16px; }

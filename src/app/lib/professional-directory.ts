@@ -12,6 +12,7 @@ export type DirectoryProfessional = {
   verified: boolean; hasPhoto: boolean; rating: number | null; reviewCount: number;
 };
 export type DirectoryResponse = {
+  favoriteIds?: number[];
   professionals: DirectoryProfessional[]; total: number; page: number; pageSize: number;
   specialties: string[]; locations: string[];
 };
