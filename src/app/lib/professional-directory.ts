@@ -31,6 +31,18 @@ const base = Prisma.sql`
     WHERE u."role" = 'PROFESSIONAL' AND u."status" = 'APPROVED' AND u."isSuspended" = false AND u."isPublic" = true AND u."termsAccepted" = true
   )`;
 
+const cardColumns = Prisma.sql`"id", "name", "businessName", "specialty", "description", "experience", "experienceYears",
+  "serviceCity", "coveredAreas", "priceRange", "priceMin", "priceMax", "availability", "verified", "hasPhoto", "rating", "reviewCount"`;
+
+export async function favoriteProfessionals(clientId: number) {
+  const favorites = await prisma.favorite.findMany({ where: { clientId }, select: { professionalId: true }, orderBy: { createdAt: "desc" }, take: 100 });
+  if (!favorites.length) return [];
+  const professionals = await prisma.$queryRaw<DirectoryProfessional[]>(Prisma.sql`
+    ${base} SELECT ${cardColumns} FROM directory WHERE "id" IN (${Prisma.join(favorites.map((favorite) => favorite.professionalId))})`);
+  const byId = new Map(professionals.map((professional) => [professional.id, professional]));
+  return favorites.map(({ professionalId }) => ({ professionalId, professional: byId.get(professionalId) ?? null }));
+}
+
 export async function searchProfessionals(filters: DirectoryFilters): Promise<DirectoryResponse> {
   const conditions: Prisma.Sql[] = [Prisma.sql`true`];
   const pattern = (value: string) => `%${value.replace(/[\\%_]/g, "\\$&")}%`;
@@ -58,8 +70,7 @@ export async function searchProfessionals(filters: DirectoryFilters): Promise<Di
     const total = counts[0].total;
     const page = Math.min(filters.page, Math.max(1, Math.ceil(total / pageSize)));
     const professionals = await tx.$queryRaw<DirectoryProfessional[]>(Prisma.sql`
-      ${base} SELECT "id", "name", "businessName", "specialty", "description", "experience", "experienceYears",
-      "serviceCity", "coveredAreas", "priceRange", "priceMin", "priceMax", "availability", "verified", "hasPhoto", "rating", "reviewCount"
+      ${base} SELECT ${cardColumns}
       FROM directory WHERE ${where} ORDER BY ${order}, "id" DESC LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`);
     const facets = await tx.$queryRaw<{ specialties: string[]; locations: string[] }[]>(Prisma.sql`
       ${base} SELECT

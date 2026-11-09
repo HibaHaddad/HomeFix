@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/app/lib/session";
 import { prisma } from "@/app/lib/prisma";
+import { hasAllowedRequestOrigin } from "@/lib/request-origin";
 
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
 const MIME_SIGNATURES: Record<string, (bytes: Uint8Array) => boolean> = {
@@ -8,13 +9,6 @@ const MIME_SIGNATURES: Record<string, (bytes: Uint8Array) => boolean> = {
   "image/png": (bytes) => [137, 80, 78, 71, 13, 10, 26, 10].every((value, index) => bytes[index] === value),
   "image/webp": (bytes) => String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" && String.fromCharCode(...bytes.slice(8, 12)) === "WEBP",
 };
-
-function sameOrigin(request: Request) {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  try { return new URL(origin).origin === new URL(request.url).origin; }
-  catch { return false; }
-}
 
 async function professionalSession() {
   const session = await getSession();
@@ -38,7 +32,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!sameOrigin(request)) return NextResponse.json({ error: "Requête non autorisée." }, { status: 403 });
+  if (!hasAllowedRequestOrigin(request)) return NextResponse.json({ error: "Requête non autorisée." }, { status: 403 });
   const access = await professionalSession();
   if ("error" in access) return access.error;
   const formData = await request.formData().catch(() => null);
@@ -57,7 +51,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  if (!sameOrigin(request)) return NextResponse.json({ error: "Requête non autorisée." }, { status: 403 });
+  if (!hasAllowedRequestOrigin(request)) return NextResponse.json({ error: "Requête non autorisée." }, { status: 403 });
   const access = await professionalSession();
   if ("error" in access) return access.error;
   await prisma.$executeRaw`

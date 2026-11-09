@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import { z } from "zod";
 import { getSession } from "@/app/lib/session";
 import { prisma } from "@/app/lib/prisma";
+import { hasAllowedRequestOrigin } from "@/lib/request-origin";
 
 const profileSchema = z.object({
   name: z.string().trim().min(2, "Le nom doit contenir au moins 2 caractères").max(120),
@@ -24,11 +25,7 @@ const profileSchema = z.object({
 }).strict().refine((data) => data.priceMax == null || (data.priceMin != null && data.priceMax >= data.priceMin), { message: "Renseignez un tarif minimum inférieur ou égal au tarif maximum." });
 
 export async function PUT(request: Request) {
-  const origin = request.headers.get("origin");
-  if (origin) {
-    try { if (new URL(origin).origin !== new URL(request.url).origin) return NextResponse.json({ error: "Requête non autorisée." }, { status: 403 }); }
-    catch { return NextResponse.json({ error: "Origine invalide." }, { status: 403 }); }
-  }
+  if (!hasAllowedRequestOrigin(request)) return NextResponse.json({ error: "Requête non autorisée." }, { status: 403 });
 
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Connexion requise." }, { status: 401 });

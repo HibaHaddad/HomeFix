@@ -7,8 +7,9 @@ import ProfessionalSection from "@/components/professional/ProfessionalSection";
 import NotificationsCenter from "@/components/notifications/NotificationsCenter";
 import ProfessionalReviews from "@/components/professional/ProfessionalReviews";
 import ProfessionalPayments from "@/components/professional/ProfessionalPayments";
+import ProfessionalHelp from "@/components/professional/ProfessionalHelp";
 
-const sections = ["tableau-de-bord", "demandes", "reservations", "interventions", "messagerie", "profil", "revenus", "avis", "notifications", "parametres"] as const;
+const sections = ["tableau-de-bord", "demandes", "reservations", "interventions", "messagerie", "profil", "revenus", "avis", "notifications", "parametres", "aide"] as const;
 
 export default async function ProfessionalPage({ params, searchParams }: PageProps<"/professionnel/[section]">) {
   const { section } = await params;
@@ -20,9 +21,13 @@ export default async function ProfessionalPage({ params, searchParams }: PagePro
     select: { name: true, email: true, phone: true, address: true, city: true, role: true, status: true, isSuspended: true, businessName: true, specialty: true, description: true, experience: true, serviceCity: true, coveredAreas: true, priceRange: true, createdAt: true, isPublic: true, experienceYears: true, priceMin: true, priceMax: true, availability: true },
   });
   if (!user || user.role !== "PROFESSIONAL") notFound();
-  if (user.status !== "APPROVED" || user.isSuspended) notFound();
+  if (user.status !== "APPROVED") notFound();
+  if (section === "aide") return <ProfessionalHelp name={user.businessName || user.name} email={user.email} />;
   if (section === "avis") return <ProfessionalReviews professionalId={session.userId}/>;
-  if (section === "revenus") return <ProfessionalPayments professionalId={session.userId}/>;
+  if (section === "revenus") {
+    const period = (await searchParams).periode;
+    return <ProfessionalPayments professionalId={session.userId} period={typeof period === "string" ? period : undefined}/>;
+  }
   if (section === "notifications") return <><div className="pro-page-heading"><div><div className="pro-eyebrow"><span/>VOTRE ACTIVITÉ</div><h1>Notifications</h1><p>Les nouvelles de vos clients et interventions, au même endroit.</p></div></div><NotificationsCenter/></>;
   if (section === "reservations") return <ProfessionalInteractions section={section} initialRequests={[]} initialSlots={[]}/>;
   if (["tableau-de-bord", "demandes", "messagerie", "reservations", "interventions"].includes(section)) {

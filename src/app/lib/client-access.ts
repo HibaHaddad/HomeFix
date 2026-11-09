@@ -5,7 +5,7 @@ export async function getClient() {
   const session = await getSession();
   if (!session) return null;
   return prisma.user.findFirst({
-    where: { id: session.userId, role: "CLIENT", status: "ACTIVE", isSuspended: false },
-    select: { id: true, name: true },
+    where: { id: session.userId, role: "CLIENT", status: "ACTIVE" },
+    select: { id: true, name: true, city: true },
   });
 }

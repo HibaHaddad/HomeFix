@@ -1,0 +1,19 @@
+.widget { position: fixed; z-index: 90; bottom: calc(max(22px, env(safe-area-inset-bottom)) + var(--widget-keyboard, 0px)); right: 24px; }
+.widget[hidden] { display: none; }
+.launcher { width: 57px; height: 57px; display: grid; place-items: center; position: relative; padding: 0; border: 1px solid #ffffff35; border-radius: 19px; background: #164e42; color: #ffd09a; box-shadow: 0 6px 24px #164e4233; cursor: pointer; transition: transform .18s, box-shadow .18s; }
+.launcher:hover { transform: translateY(-3px); box-shadow: 0 10px 28px #164e4240; }
+.launcher { animation: float 3s ease-in-out infinite; }
+.launcher:hover, .launcher:focus-visible { animation-play-state: paused; }
+.launcher > span { position: absolute; right: -3px; bottom: -3px; display: grid; place-items: center; width: 21px; height: 19px; border-radius: 6px; background: #ffe0b6; color: #164e42; border: 2px solid #f8f7f2; font-size: 8px; font-weight: 750; }
+.isOpen { background: #236550; animation: none; }
+.panel { position: absolute; bottom: 73px; right: 0; width: min(420px, calc(100vw - 32px)); height: min(620px, calc(var(--widget-viewport, 100dvh) - 125px)); min-height: 0; border-radius: 18px; background: #fff; box-shadow: 0 18px 70px #153f3533, 0 0 0 1px #dce7da; overflow: hidden; animation: appear .18s ease-out; }
+.panel[hidden] { display: none; }
+.controls { position: absolute; z-index: 2; top: 16px; right: 12px; display: flex; gap: 3px; }
+.controls > a, .controls > button { width: 29px; height: 29px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 7px; background: transparent; color: #78917d; cursor: pointer; }
+.controls > a:hover, .controls > button:hover { background: #edf4e8; color: #245b44; }
+.widget button:focus-visible, .widget a:focus-visible { outline: 2px solid #8eac69; outline-offset: 3px; }
+@keyframes appear { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -8px; } }
+@media (max-width: 600px) { .widget { right: 16px; bottom: calc(max(16px, env(safe-area-inset-bottom)) + var(--widget-keyboard, 0px)); } .launcher { width: 52px; height: 52px; border-radius: 17px; } .panel { width: calc(100vw - 32px); bottom: 67px; height: min(610px, calc(var(--widget-viewport, 100dvh) - 110px)); border-radius: 15px; } .controls { top: 15px; right: 8px; } }
+@media (prefers-reduced-motion: reduce) { .launcher, .panel { animation: none; transition: none; } }
+@media print { .widget { display: none; } }

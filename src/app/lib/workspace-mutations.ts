@@ -9,6 +9,7 @@ import { publishMessage, publishMessageUpdate } from "./chat-service";
 import { availabilityHours, HOUR_MS, splitHours } from "@/lib/availability";
 import { bookingRangeLabel } from "@/lib/booking-message";
 import { chatServer, userRoom } from "./chat-events";
+import { interventionStatusMessages } from "@/lib/intervention-status-message";
 
 export type Actor = { id: number; role: string };
 export class WorkflowError extends Error { constructor(message: string, public status = 400) { super(message); } }
@@ -43,24 +44,24 @@ async function mutateOnce(actor: Actor, body: Record<string, unknown>) {
       if (!r) throw new WorkflowError("Demande introuvable.", 404);
       return r;
     }
-    async function event(requestId: number, status: string, description: string, notifyId?: number, quoteId?: number, channel: "chat" | "notification" = "chat") {
+    async function event(requestId: number, status: string, description: string, notifyId?: number, quoteId?: number, channel: "chat" | "notification" | "both" = "chat") {
       await tx.requestEvent.create({ data: { requestId, actorId: actor.id, status, description } });
       const related = await tx.serviceRequest.findUniqueOrThrow({ where: { id: requestId }, select: { conversationId: true, clientId: true, professionalId: true, title: true } });
-      if (channel === "notification") {
+      if (channel !== "chat") {
         interventionUpdates.push({ requestId, clientId: related.clientId, professionalId: related.professionalId, status });
         if (notifyId) {
           const base = notifyId === related.clientId ? "/dashboard" : "/professionnel";
           const types: Record<string, string> = { EN_ROUTE: "PRO_ON_THE_WAY", IN_PROGRESS: "INTERVENTION_STARTED", COMPLETED: actor.role === "CLIENT" ? "INTERVENTION_VALIDATED" : "INTERVENTION_COMPLETED" };
           await notify(notifyId, `${description} · ${related.title}`, requestId, `${base}/interventions?demande=${requestId}#intervention-${requestId}`, types[status] || "INFO");
         }
-        return;
+        if (channel === "notification") return;
       }
       const message = await tx.chatMessage.create({ data: { requestId: related.conversationId ?? requestId, senderId: actor.id, text: description, quoteId } });
       messagesToPublish.push(message.id);
       const offers = await tx.chatMessage.findMany({ where: { quote: { requestId } }, select: { id: true } });
       for (const offer of offers) if (offer.id !== message.id) messagesToRefresh.add(offer.id);
       await tx.serviceRequest.update({ where: { id: related.conversationId ?? requestId }, data: { updatedAt: new Date() } });
-      if (notifyId) {
+      if (notifyId && channel === "chat") {
         const types: Record<string, string> = { SENT: "REQUEST_SENT", QUOTED: "PRICE_PROPOSED", PRICE_ACCEPTED: "PRICE_ACCEPTED", BOOKED: "BOOKING_CONFIRMED", CANCELLED: "BOOKING_CANCELLED", REJECTED: "BOOKING_REJECTED" };
         await notify(notifyId, description, related.conversationId ?? requestId, undefined, types[status] || "INFO");
       }
@@ -219,8 +220,8 @@ async function mutateOnce(actor: Actor, body: Record<string, unknown>) {
       professionalOnly(); const r = await ownedRequest();
       const status = nextProfessionalStatus(r.status, text(body.status, "Statut", 1, 30));
       await tx.serviceRequest.update({ where: { id: r.id }, data: { status } });
-      const description = { EN_ROUTE: "Votre professionnel est en route", IN_PROGRESS: "Votre intervention a commencé", COMPLETED: "Votre intervention est terminée" }[status] || "Votre intervention a été mise à jour";
-      await event(r.id, status, description, r.clientId, undefined, "notification");
+      const description = interventionStatusMessages[status] || "Votre intervention a été mise à jour";
+      await event(r.id, status, description, r.clientId, undefined, "both");
     } else if (action === "intervention.confirm") {
       clientOnly(); const r = await ownedRequest();
       if (r.status !== "COMPLETED" || r.clientConfirmedAt) throw new WorkflowError("La fin ne peut pas être confirmée.", 409);
