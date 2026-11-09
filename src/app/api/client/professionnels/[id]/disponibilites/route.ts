@@ -8,7 +8,7 @@ import { monthBounds, tunisDay } from "@/lib/availability";
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return Response.json({ error: "Connexion requise." }, { status: 401 });
-  const actor = await prisma.user.findFirst({ where: { id: session.userId, OR: [{ role: "CLIENT", status: "ACTIVE" }, { role: "PROFESSIONAL", status: "APPROVED" }] }, select: { id: true, role: true } });
+  const actor = await prisma.user.findFirst({ where: { id: session.userId, isSuspended: false, OR: [{ role: "CLIENT", status: "ACTIVE" }, { role: "PROFESSIONAL", status: "APPROVED" }] }, select: { id: true, role: true } });
   if (!actor) return Response.json({ error: "Accès non autorisé." }, { status: 403 });
   let professionalId: number;
   try { professionalId = id((await context.params).id); } catch { return Response.json({ error: "Professionnel introuvable." }, { status: 404 }); }

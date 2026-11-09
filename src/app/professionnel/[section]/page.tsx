@@ -18,7 +18,7 @@ export default async function ProfessionalPage({ params, searchParams }: PagePro
   if (!session) notFound();
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { name: true, email: true, phone: true, address: true, city: true, role: true, status: true, businessName: true, specialty: true, description: true, experience: true, serviceCity: true, coveredAreas: true, priceRange: true, createdAt: true, isPublic: true, experienceYears: true, priceMin: true, priceMax: true, availability: true },
+    select: { name: true, email: true, phone: true, address: true, city: true, role: true, status: true, isSuspended: true, businessName: true, specialty: true, description: true, experience: true, serviceCity: true, coveredAreas: true, priceRange: true, createdAt: true, isPublic: true, experienceYears: true, priceMin: true, priceMax: true, availability: true },
   });
   if (!user || user.role !== "PROFESSIONAL") notFound();
   if (user.status !== "APPROVED") notFound();

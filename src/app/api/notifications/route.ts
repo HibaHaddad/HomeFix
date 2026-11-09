@@ -6,7 +6,7 @@ import { id } from "@/lib/client-domain";
 
 async function actor() {
   const session = await getSession();
-  return session && prisma.user.findFirst({ where: { id: session.userId, OR: [{ role: "CLIENT", status: "ACTIVE" }, { role: "PROFESSIONAL", status: "APPROVED" }] }, select: { id: true } });
+  return session && prisma.user.findFirst({ where: { id: session.userId, isSuspended: false, OR: [{ role: "CLIENT", status: "ACTIVE" }, { role: "PROFESSIONAL", status: "APPROVED" }] }, select: { id: true } });
 }
 const headers = { "Cache-Control": "private, no-store" };
 export async function GET(request: Request) {

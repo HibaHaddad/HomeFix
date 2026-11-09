@@ -29,8 +29,8 @@ export async function PUT(request: Request) {
 
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Connexion requise." }, { status: 401 });
-  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { id: true, email: true, password: true, role: true, status: true } });
-  if (!user || user.role !== "PROFESSIONAL" || user.status !== "APPROVED") return NextResponse.json({ error: "Cette action est réservée aux professionnels approuvés." }, { status: 403 });
+  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { id: true, email: true, password: true, role: true, status: true, isSuspended: true } });
+  if (!user || user.role !== "PROFESSIONAL" || user.status !== "APPROVED" || user.isSuspended) return NextResponse.json({ error: "Cette action est réservée aux professionnels approuvés." }, { status: 403 });
 
   const body = await request.json().catch(() => null);
   const parsed = profileSchema.safeParse(body);
@@ -46,7 +46,7 @@ export async function PUT(request: Request) {
   }
 
   const result = await prisma.user.updateMany({
-    where: { id: user.id, role: "PROFESSIONAL", status: "APPROVED" },
+    where: { id: user.id, role: "PROFESSIONAL", status: "APPROVED", isSuspended: false },
     data: { ...profile, phone: profile.phone || null, priceRange: profile.priceRange || null, description: profile.description || null },
   });
   if (result.count !== 1) return NextResponse.json({ error: "Votre compte ne peut plus être modifié." }, { status: 409 });

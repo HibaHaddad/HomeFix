@@ -19,6 +19,7 @@ export async function GET() {
       name: true,
       email: true,
       createdAt: true,
+      isSuspended: true,
     },
   });
 
@@ -29,5 +30,7 @@ export async function GET() {
     );
   }
 
-  return NextResponse.json(user);
+  if (user.isSuspended) return NextResponse.json({ error: "Ce compte est suspendu." }, { status: 403 });
+
+  return NextResponse.json({ id: user.id, name: user.name, email: user.email, createdAt: user.createdAt });
 }

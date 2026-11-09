@@ -4,7 +4,7 @@ import { chatServer, userRoom } from "./chat-events";
 export const messageSelect = { id: true, requestId: true, senderId: true, clientNonce: true, text: true, latitude: true, longitude: true, deliveredAt: true, readAt: true, createdAt: true, attachments: { select: { id: true, name: true, mime: true, size: true } }, quote: { select: { id: true, requestId: true, amountMillimes: true, status: true, validUntil: true, request: { select: { status: true, booking: { select: { status: true, startsAt: true, endsAt: true } } } } } } } as const;
 export async function chatParticipant(userId: number, requestId: number) {
   if (!Number.isSafeInteger(requestId) || requestId < 1) throw new Error("Conversation invalide.");
-  const actor = await prisma.user.findFirst({ where: { id: userId, OR: [{ role: "CLIENT", status: "ACTIVE" }, { role: "PROFESSIONAL", status: "APPROVED" }] }, select: { id: true, role: true } });
+  const actor = await prisma.user.findFirst({ where: { id: userId, isSuspended: false, OR: [{ role: "CLIENT", status: "ACTIVE" }, { role: "PROFESSIONAL", status: "APPROVED" }] }, select: { id: true, role: true } });
   if (!actor) throw new Error("Connexion requise.");
   const record = await prisma.serviceRequest.findFirst({ where: { id: requestId, OR: [{ clientId: userId }, { professionalId: userId }] }, select: { id: true, clientId: true, professionalId: true, status: true, conversationId: true } });
   if (!record || record.conversationId) throw new Error("Conversation introuvable.");
