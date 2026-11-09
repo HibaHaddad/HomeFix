@@ -19,8 +19,8 @@ test("approval accepts the public browser origin while retaining authentication 
   const admin = await prisma.user.findFirst({ where: { role: "ADMIN" }, select: { id: true } });
   if (!admin) { t.skip("No existing administrator"); return; }
   const headers = await headersFor(admin.id);
-  // 409 means the request reached the guarded database operation, without changing a dossier.
-  assert.equal((await decide(headers)).status, 409);
+  // A missing dossier returns 404 after the authentication and role checks.
+  assert.equal((await decide(headers)).status, 404);
   assert.equal((await decide(headers, "INVALID")).status, 400);
   assert.equal((await decide({ ...headers, Origin: "https://foreign.example" })).status, 403);
   const client = await prisma.user.findFirst({ where: { role: "CLIENT", status: "ACTIVE" }, select: { id: true } });

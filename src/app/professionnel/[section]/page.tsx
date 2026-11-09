@@ -21,7 +21,7 @@ export default async function ProfessionalPage({ params, searchParams }: PagePro
     select: { name: true, email: true, phone: true, address: true, city: true, role: true, status: true, isSuspended: true, businessName: true, specialty: true, description: true, experience: true, serviceCity: true, coveredAreas: true, priceRange: true, createdAt: true, isPublic: true, experienceYears: true, priceMin: true, priceMax: true, availability: true },
   });
   if (!user || user.role !== "PROFESSIONAL") notFound();
-  if (user.status !== "APPROVED") notFound();
+  if (user.status !== "APPROVED" || user.isSuspended) notFound();
   if (section === "aide") return <ProfessionalHelp name={user.businessName || user.name} email={user.email} />;
   if (section === "avis") return <ProfessionalReviews professionalId={session.userId}/>;
   if (section === "revenus") {
