@@ -17,10 +17,10 @@ export default async function ProfessionalPage({ params, searchParams }: PagePro
   if (!session) notFound();
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { name: true, email: true, phone: true, address: true, city: true, role: true, status: true, businessName: true, specialty: true, description: true, experience: true, serviceCity: true, coveredAreas: true, priceRange: true, createdAt: true, isPublic: true, experienceYears: true, priceMin: true, priceMax: true, availability: true },
+    select: { name: true, email: true, phone: true, address: true, city: true, role: true, status: true, isSuspended: true, businessName: true, specialty: true, description: true, experience: true, serviceCity: true, coveredAreas: true, priceRange: true, createdAt: true, isPublic: true, experienceYears: true, priceMin: true, priceMax: true, availability: true },
   });
   if (!user || user.role !== "PROFESSIONAL") notFound();
-  if (user.status !== "APPROVED") notFound();
+  if (user.status !== "APPROVED" || user.isSuspended) notFound();
   if (section === "avis") return <ProfessionalReviews professionalId={session.userId}/>;
   if (section === "revenus") return <ProfessionalPayments professionalId={session.userId}/>;
   if (section === "notifications") return <><div className="pro-page-heading"><div><div className="pro-eyebrow"><span/>VOTRE ACTIVITÉ</div><h1>Notifications</h1><p>Les nouvelles de vos clients et interventions, au même endroit.</p></div></div><NotificationsCenter/></>;

@@ -16,10 +16,10 @@ import "../dashboard/payments.css";
 export default async function ProfessionalLayout({ children }: LayoutProps<"/professionnel">) {
   const session = await getSession();
   if (!session) redirect("/login");
-  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { id: true, name: true, email: true, role: true, status: true, businessName: true, specialty: true } });
+  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { id: true, name: true, email: true, role: true, status: true, isSuspended: true, businessName: true, specialty: true } });
   if (!user) redirect("/login");
   if (user.role !== "PROFESSIONAL") redirect("/dashboard");
-  if (user.status !== "APPROVED") redirect("/login");
+  if (user.status !== "APPROVED" || user.isSuspended) redirect("/login");
 
   const photoState = await prisma.$queryRaw<Array<{ hasPhoto: boolean }>>`
     SELECT "profilePhotoMime" IS NOT NULL AS "hasPhoto"

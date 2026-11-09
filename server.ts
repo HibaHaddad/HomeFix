@@ -35,7 +35,7 @@ async function main() {
       if (!token) throw new Error();
       const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
       if (!Number.isSafeInteger(payload.userId)) throw new Error();
-      const actor = await prisma.user.findFirst({ where: { id: payload.userId as number, OR: [{ role: "CLIENT", status: "ACTIVE" }, { role: "PROFESSIONAL", status: "APPROVED" }] }, select: { id: true } });
+      const actor = await prisma.user.findFirst({ where: { id: payload.userId as number, isSuspended: false, OR: [{ role: "CLIENT", status: "ACTIVE" }, { role: "PROFESSIONAL", status: "APPROVED" }] }, select: { id: true } });
       if (!actor) throw new Error();
       socket.data.userId = actor.id; socket.data.expires = Number(payload.exp) * 1000;
       done();
@@ -70,7 +70,7 @@ async function main() {
     });
     handle("chat:close", async () => { socket.data.generation = (socket.data.generation || 0) + 1; socket.data.activeId = null; socket.data.peerId = null; });
     handle("chat:pending", async () => {
-      const actor = await prisma.user.findFirst({ where: { id: userId, OR: [{ role: "CLIENT", status: "ACTIVE" }, { role: "PROFESSIONAL", status: "APPROVED" }] }, select: { id: true } });
+      const actor = await prisma.user.findFirst({ where: { id: userId, isSuspended: false, OR: [{ role: "CLIENT", status: "ACTIVE" }, { role: "PROFESSIONAL", status: "APPROVED" }] }, select: { id: true } });
       if (!actor) throw new Error("Connexion requise.");
       return prisma.chatMessage.findMany({ where: { senderId: { not: userId }, deliveredAt: null, request: { OR: [{ clientId: userId }, { professionalId: userId }] } }, select: { id: true, requestId: true }, orderBy: { id: "asc" }, take: 200 });
     });

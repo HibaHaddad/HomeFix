@@ -30,6 +30,13 @@ export async function POST(req: Request) {
     );
   }
 
+  if (user.isSuspended) {
+    return NextResponse.json(
+      { error: "Ce compte est suspendu. Contactez l’assistance HomeFix pour obtenir de l’aide." },
+      { status: 403 },
+    );
+  }
+
   if (user.role === "PROFESSIONAL" && user.status !== "APPROVED") {
     return NextResponse.json(
       { error: user.status === "REJECTED"

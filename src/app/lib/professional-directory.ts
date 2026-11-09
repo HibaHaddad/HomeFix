@@ -3,7 +3,7 @@ import { prisma } from "./prisma";
 import type { DirectoryFilters } from "@/lib/directory-filters";
 import { normalizeSearchTerm } from "@/lib/directory-filters";
 
-export const visibleProfessional = { role: "PROFESSIONAL", status: "APPROVED", isPublic: true, termsAccepted: true } as const;
+export const visibleProfessional = { role: "PROFESSIONAL", status: "APPROVED", isPublic: true, termsAccepted: true, isSuspended: false } as const;
 export type DirectoryProfessional = {
   id: number; name: string; businessName: string | null; specialty: string | null;
   description: string | null; experience: string | null; experienceYears: number | null;
@@ -28,7 +28,7 @@ const base = Prisma.sql`
       SELECT "professionalId", AVG("rating")::float8 AS "rating", COUNT(*)::int AS "reviewCount"
       FROM "ProfessionalReview" WHERE "published" = true GROUP BY "professionalId"
     ) r ON r."professionalId" = u."id"
-    WHERE u."role" = 'PROFESSIONAL' AND u."status" = 'APPROVED' AND u."isPublic" = true AND u."termsAccepted" = true
+    WHERE u."role" = 'PROFESSIONAL' AND u."status" = 'APPROVED' AND u."isSuspended" = false AND u."isPublic" = true AND u."termsAccepted" = true
   )`;
 
 export async function searchProfessionals(filters: DirectoryFilters): Promise<DirectoryResponse> {

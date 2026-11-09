@@ -8,7 +8,7 @@ import { monthBounds } from "@/lib/availability";
 
 export async function GET(request: Request) {
   const session = await getSession();
-  const actor = session && await prisma.user.findFirst({ where: { id: session.userId, role: "PROFESSIONAL", status: "APPROVED" }, select: { id: true } });
+  const actor = session && await prisma.user.findFirst({ where: { id: session.userId, role: "PROFESSIONAL", status: "APPROVED", isSuspended: false }, select: { id: true } });
   if (!actor) return Response.json({ error: "Professionnel approuvé requis." }, { status: 401 });
   const month = new URL(request.url).searchParams.get("month");
   if (month !== null) {
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   if (!hasAllowedRequestOrigin(request)) return Response.json({ error: "Origine non autorisée." }, { status: 403 });
   const session = await getSession();
-  const actor = session && await prisma.user.findFirst({ where: { id: session.userId, role: "PROFESSIONAL", status: "APPROVED" }, select: { id: true, role: true } });
+  const actor = session && await prisma.user.findFirst({ where: { id: session.userId, role: "PROFESSIONAL", status: "APPROVED", isSuspended: false }, select: { id: true, role: true } });
   if (!actor) return Response.json({ error: "Professionnel approuvé requis." }, { status: 401 });
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== "object" || !["message.send", "quote.propose", "booking.confirm", "booking.counter", "booking.reject", "availability.create", "availability.save", "availability.remove", "intervention.status"].includes(body.action)) return Response.json({ error: "Action invalide." }, { status: 400 });

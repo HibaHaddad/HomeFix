@@ -20,11 +20,11 @@ import "./notifications.css";
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   if (!session) redirect("/login");
-  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { name: true, role: true, status: true, profilePhotoMime: true } });
+  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { name: true, role: true, status: true, isSuspended: true, profilePhotoMime: true } });
   if (!user) redirect("/login");
   if (user.role === "ADMIN") redirect("/admin/professionnels");
   if (user.role === "PROFESSIONAL") redirect("/professionnel/tableau-de-bord");
-  if (user.role !== "CLIENT" || user.status !== "ACTIVE") redirect("/login");
+  if (user.role !== "CLIENT" || user.status !== "ACTIVE" || user.isSuspended) redirect("/login");
   const unreadCount = await prisma.clientNotification.count({ where: { userId: session.userId, readAt: null } });
   return <NotificationProvider key={session.userId} initialUnread={unreadCount}><div className="client-app cx-app"><ChatNotifications userId={session.userId}/><ClientNavigation/><div className="cx-main">
     <header className="client-header"><HomeFixBrand className="cx-header-brand"/>

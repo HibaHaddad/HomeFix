@@ -19,8 +19,8 @@ function sameOrigin(request: Request) {
 async function professionalSession() {
   const session = await getSession();
   if (!session) return { error: NextResponse.json({ error: "Connexion requise." }, { status: 401 }) };
-  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { id: true, role: true, status: true } });
-  if (!user || user.role !== "PROFESSIONAL" || user.status !== "APPROVED") {
+  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { id: true, role: true, status: true, isSuspended: true } });
+  if (!user || user.role !== "PROFESSIONAL" || user.status !== "APPROVED" || user.isSuspended) {
     return { error: NextResponse.json({ error: "Cette action est réservée aux professionnels approuvés." }, { status: 403 }) };
   }
   return { user };
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
   if (!signatureCheck(bytes)) return NextResponse.json({ error: "Le contenu du fichier ne correspond pas à une image valide." }, { status: 400 });
   await prisma.$executeRaw`
     UPDATE "User" SET "profilePhoto" = ${bytes}, "profilePhotoMime" = ${photo.type}
-    WHERE "id" = ${access.user.id} AND "role" = 'PROFESSIONAL' AND "status" = 'APPROVED'
+    WHERE "id" = ${access.user.id} AND "role" = 'PROFESSIONAL' AND "status" = 'APPROVED' AND "isSuspended" = false
   `;
   return NextResponse.json({ message: "Votre photo de profil a été mise à jour." });
 }
@@ -62,7 +62,7 @@ export async function DELETE(request: Request) {
   if ("error" in access) return access.error;
   await prisma.$executeRaw`
     UPDATE "User" SET "profilePhoto" = NULL, "profilePhotoMime" = NULL
-    WHERE "id" = ${access.user.id} AND "role" = 'PROFESSIONAL' AND "status" = 'APPROVED'
+    WHERE "id" = ${access.user.id} AND "role" = 'PROFESSIONAL' AND "status" = 'APPROVED' AND "isSuspended" = false
   `;
   return NextResponse.json({ message: "Votre photo de profil a été supprimée." });
 }
