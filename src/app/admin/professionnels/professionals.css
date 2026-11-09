@@ -1,0 +1,52 @@
+.admin-professionals-page { width: 100%; min-width: 0; }
+.admin-professional-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 11px; margin: -5px 0 18px; }
+.admin-professional-stat { min-width: 0; display: grid; gap: 8px; padding: 13px 15px; border: 1px solid #e8ebe4; border-radius: 12px; background: #fff; box-shadow: 0 4px 14px #1e302a07; }
+.admin-professional-stat span { overflow: hidden; color: #87948a; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.admin-professional-stat strong { color: #26392f; font-size: 21px; font-variant-numeric: tabular-nums; }
+.admin-professional-filters { flex-wrap: wrap; }
+.admin-professional-filters .admin-search { flex: 1 1 235px; width: auto; min-width: 210px; }
+.admin-professional-filters .admin-filter select { min-width: 135px; }
+.admin-professional-filters > button { flex: 0 0 auto; }
+.admin-professional-table-wrap { max-width: 100%; overflow-x: auto; }
+.admin-professional-table { min-width: 1040px; }
+.admin-professional-table td:nth-child(2) { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.admin-professional-account { display: inline-flex; padding: 5px 8px; border-radius: 7px; font-size: 8px; font-weight: 750; }
+.admin-professional-account.is-active { background: #eaf5ee; color: #39825c; }
+.admin-professional-account.is-suspended { background: #fff0ed; color: #bb604d; }
+.admin-professional-detail-badges { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.admin-professional-decision-meta { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 14px; padding: 13px 15px; border: 1px solid #e8ebe4; border-radius: 10px; background: #fff; color: #607066; font-size: 10px; }
+.admin-professional-requirements { display: grid; gap: 5px; margin-bottom: 12px; padding: 12px 14px; border: 1px solid #f0dfbd; border-radius: 10px; background: #fffaf0; color: #866324; font-size: 10px; line-height: 1.55; }
+.admin-professional-requirements strong { font-size: 10px; }
+.admin-professional-requirements small { color: #9a855a; font-size: 9px; }
+.admin-professional-pagination { min-height: 51px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 18px; border-top: 1px solid #edf0eb; color: #929c94; font-size: 9px; }
+.admin-professional-pagination > div { display: flex; align-items: center; gap: 12px; }
+.admin-professional-pagination a { display: inline-flex; align-items: center; gap: 5px; color: #607066; font-size: 9px; text-decoration: none; }
+.admin-professional-pagination a:hover:not(.is-disabled) { color: #167c68; }
+.admin-professional-pagination a.is-disabled { opacity: .45; pointer-events: none; }
+.admin-professional-skeleton { min-height: 69px; border: 1px solid #e8ebe4; border-radius: 12px; background: linear-gradient(105deg,#fff 30%,#f3f4ef 48%,#fff 66%); background-size: 200% 100%; animation: admin-professional-shimmer 1.5s linear infinite; }
+.admin-professional-table-skeleton { min-height: 420px; margin-top: 15px; }
+@keyframes admin-professional-shimmer { to { background-position-x: -200%; } }
+@media (max-width: 1100px) {
+  .admin-professional-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .admin-professional-filters .admin-filter { flex: 1 1 145px; }
+}
+@media (max-width: 760px) {
+  .admin-professional-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .admin-professional-stat { padding: 10px 12px; }
+  .admin-professional-stat strong { font-size: 18px; }
+  .admin-professional-filters { align-items: stretch; }
+  .admin-professional-filters .admin-search { min-width: 100%; flex-basis: 100%; }
+  .admin-professional-filters .admin-filter { min-width: calc(50% - 6px); }
+  .admin-professional-filters .admin-filter select { width: 100%; min-width: 0; }
+  .admin-professional-filters > button { flex: 1; }
+  .admin-professional-pagination { align-items: flex-start; flex-direction: column; padding: 11px 14px; }
+  .admin-professional-pagination > div { width: 100%; justify-content: space-between; }
+}
+@media (max-width: 430px) {
+  .admin-professional-stat { padding: 9px; }
+  .admin-professional-stat span { font-size: 9px; white-space: normal; }
+  .admin-professional-stat strong { font-size: 17px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-professional-skeleton { animation: none; }
+}

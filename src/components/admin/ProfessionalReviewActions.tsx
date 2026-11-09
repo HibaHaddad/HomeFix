@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export default function ProfessionalReviewActions({ professionalId, professionalName }: { professionalId: number; professionalName: string }) {
+export default function ProfessionalReviewActions({ professionalId, professionalName, approvalReady, missingRequirements }: { professionalId: number; professionalName: string; approvalReady: boolean; missingRequirements: string[] }) {
   const router = useRouter();
   const [showRefusal, setShowRefusal] = useState(false);
   const [reason, setReason] = useState("");
@@ -29,7 +29,10 @@ export default function ProfessionalReviewActions({ professionalId, professional
   return <div className="admin-decision-area">
     {feedback && <div className="admin-action-feedback" role="status">✓ {feedback}</div>}
     {error && <p className="admin-action-error" role="alert">{error}</p>}
-    {!feedback && <div className="admin-decision-card"><div><strong>Décision de vérification</strong><p>La décision sera enregistrée dans le dossier et appliquée à l’accès du professionnel.</p></div><div className="admin-decision-buttons"><button className="admin-button admin-button-danger" disabled={busy} onClick={() => { setError(""); setShowRefusal(true); }}>Refuser</button><button className="admin-button admin-button-primary" disabled={busy} onClick={() => decide("APPROVED")}>{busy ? "Enregistrement…" : "Approuver"}</button></div></div>}
+    {!feedback && <>
+      {!approvalReady && <div className="admin-professional-requirements" role="status"><strong>Approbation indisponible : le dossier doit être complété.</strong><span>Éléments manquants : {missingRequirements.join(", ")}.</span><small>Le justificatif PDF est facultatif selon les règles d’inscription actuelles.</small></div>}
+      <div className="admin-decision-card"><div><strong>Décision de vérification</strong><p>La décision sera enregistrée dans le dossier et appliquée à l’accès du professionnel.</p></div><div className="admin-decision-buttons"><button className="admin-button admin-button-danger" disabled={busy} onClick={() => { setError(""); setShowRefusal(true); }}>Refuser</button><button className="admin-button admin-button-primary" disabled={busy || !approvalReady} onClick={() => decide("APPROVED")}>{busy ? "Enregistrement…" : "Approuver"}</button></div></div>
+    </>}
     {showRefusal && <div className="admin-dialog-backdrop" role="presentation"><section className="admin-dialog" role="dialog" aria-modal="true" aria-labelledby="refusal-title"><button className="admin-dialog-close" onClick={() => setShowRefusal(false)} aria-label="Fermer">×</button><div className="admin-eyebrow"><span/>DÉCISION DE DOSSIER</div><h2 id="refusal-title">Refuser cette inscription ?</h2><p>Indiquez le motif qui sera conservé avec le dossier.</p><label className="admin-reason-label" htmlFor="refusal-reason">Motif du refus <i>*</i></label><textarea id="refusal-reason" value={reason} onChange={(event) => setReason(event.target.value)} maxLength={1000} rows={4} required placeholder="Expliquez la raison du refus…"/><div className="admin-dialog-actions"><button className="admin-button admin-button-light" disabled={busy} onClick={() => setShowRefusal(false)}>Annuler</button><button className="admin-button admin-button-danger" disabled={busy || reason.trim().length < 3} onClick={() => decide("REJECTED")}>{busy ? "Enregistrement…" : "Confirmer le refus"}</button></div></section></div>}
   </div>;
 }
