@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "./prisma";
+import { favoriteProfessionals } from "./professional-directory";
 
 export const requestInclude = {
   professional: { select: { id: true, name: true, businessName: true, specialty: true, profilePhotoMime: true } },
@@ -26,7 +27,7 @@ export async function clientWorkspace(clientId: number, before?: number, selecte
     prisma.serviceRequest.findMany({ where: { clientId, OR: [{ kind: "MESSAGE" }, { conversationId: null }] }, include: requestInclude, orderBy: { updatedAt: "desc" }, take: 100 }),
     clientInterventions(clientId, selectedIntervention),
     prisma.equipment.findMany({ where: { clientId }, include: { reminders: { orderBy: { dueAt: "asc" } } }, orderBy: { createdAt: "desc" }, take: 100 }),
-    prisma.favorite.findMany({ where: { clientId }, select: { professionalId: true, professional: { select: { id: true, name: true, businessName: true, specialty: true, status: true, isPublic: true, termsAccepted: true } } }, take: 100 }),
+    favoriteProfessionals(clientId),
     prisma.clientNotification.findMany({ where: { userId: clientId }, orderBy: { createdAt: "desc" }, take: 100 }),
     prisma.complaint.findMany({ where: { clientId }, orderBy: { createdAt: "desc" }, take: 100 }),
     prisma.user.findUniqueOrThrow({ where: { id: clientId }, select: { name: true, email: true, phone: true, address: true, city: true, notificationEnabled: true, profilePhotoMime: true } }),
@@ -36,7 +37,7 @@ export async function clientWorkspace(clientId: number, before?: number, selecte
     prisma.booking.count({ where: { request: { clientId }, status: "CONFIRMED", startsAt: { gte: new Date() } } }),
     prisma.serviceRequest.findMany({ where: { clientId, ...(before ? { id: { lt: before } } : {}), OR: [{ review: { isNot: null } }, { status: "COMPLETED", quotes: { some: { status: "ACCEPTED", invoice: { status: "PAID", payments: { some: { status: "SUCCEEDED" } } } } } }] }, include: requestInclude, orderBy: { id: "desc" }, take: 100 }),
   ]);
-  return { requests, conversations, confirmedInterventions, reviewRequests, olderCursor: requests.length === 100 ? requests[requests.length - 1].id : null, equipment, favorites, notifications, complaints, profile, stats: { activeCount, completedCount, quoteCount, appointmentCount }, aiEnabled: Boolean(process.env.HOMEFIX_AI_URL && process.env.HOMEFIX_AI_KEY && process.env.HOMEFIX_AI_MODEL) };
+  return { requests, conversations, confirmedInterventions, reviewRequests, olderCursor: requests.length === 100 ? requests[requests.length - 1].id : null, equipment, favorites, notifications, complaints, profile, stats: { activeCount, completedCount, quoteCount, appointmentCount }, aiEnabled: Boolean(process.env.GEMINI_API_KEY) };
 }
 export type Workspace = Awaited<ReturnType<typeof clientWorkspace>>;
 export type Serialized<T> = T extends Date ? string : T extends Array<infer U> ? Serialized<U>[] : T extends object ? { [K in keyof T]: Serialized<T[K]> } : T;

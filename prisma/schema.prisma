@@ -54,8 +54,28 @@ model User {
   certificationPdf  Bytes?
   termsAccepted     Boolean  @default(false)
   createdAt         DateTime @default(now())
+  assistantConversations AssistantConversation[]
 
   @@index([role, status, isPublic, createdAt])
+}
+
+model AssistantConversation {
+  id String @id @default(uuid())
+  clientId Int
+  title String @default("Nouvelle conversation")
+  messages Json @default("[]")
+  busyUntil DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  client User @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  @@index([clientId, updatedAt])
+}
+
+model AssistantUsage {
+  key String @id
+  count Int @default(1)
+  expiresAt DateTime
+  @@index([expiresAt])
 }
 
 model ProfessionalReview {

@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/app/lib/session";
 import { prisma } from "@/app/lib/prisma";
+import { hasAllowedRequestOrigin } from "@/lib/request-origin";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const origin = request.headers.get("origin");
-  if (origin) {
-    try { if (new URL(origin).origin !== new URL(request.url).origin) return NextResponse.json({ error: "Requête non autorisée." }, { status: 403 }); }
-    catch { return NextResponse.json({ error: "Origine invalide." }, { status: 403 }); }
-  }
+  if (!hasAllowedRequestOrigin(request)) return NextResponse.json({ error: "Requête non autorisée." }, { status: 403 });
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Connexion requise." }, { status: 401 });
   const admin = await prisma.user.findUnique({ where: { id: session.userId }, select: { id: true, role: true } });

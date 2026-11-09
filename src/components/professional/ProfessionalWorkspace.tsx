@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import Link from "next/link";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import HomeFixBrand from "@/components/HomeFixBrand";
 import LogoutButton from "@/components/LogoutButton";
@@ -18,7 +19,7 @@ export default function ProfessionalWorkspace({ user, children }: { user: Worksp
         <button className="pro-sidebar-toggle" type="button" onClick={() => setCollapsed((value) => !value)} aria-label={collapsed ? "Ouvrir la barre latérale" : "Réduire la barre latérale"} aria-expanded={!collapsed} title={collapsed ? "Ouvrir la barre latérale" : "Réduire la barre latérale"}><ProfessionalIcon name={collapsed ? "chevron-right" : "chevron-left"} size={16}/></button>
       </div>
       <nav className="pro-nav" aria-label="Navigation professionnelle"><ProfessionalNavigation /></nav>
-      <div className="pro-sidebar-bottom"><div className="pro-help"><span>Besoin d’aide ?</span><small>Notre équipe est là pour vous accompagner.</small><a href="mailto:contact@homefix.tn">Contacter HomeFix ↗</a></div><div className="pro-logout-wrap"><LogoutButton /></div></div>
+      <div className="pro-sidebar-bottom"><div className="pro-help"><span>Besoin d’aide ?</span><small>Notre équipe est là pour vous accompagner.</small><Link href="/professionnel/aide">Contacter HomeFix ↗</Link></div><div className="pro-logout-wrap"><LogoutButton /></div></div>
     </aside>
     <div className="pro-main">
       <header className="pro-header"><div className="pro-breadcrumb"><span className="pro-breadcrumb-home"><ProfessionalIcon name="home" size={14}/></span> HomeFix <i>/</i> <strong>Espace professionnel</strong></div><div className="pro-header-actions"><NotificationBell professional/><div className="pro-user"><span className="pro-avatar">{user.hasProfilePhoto ? <img src="/api/professionnel/photo" alt="" /> : user.name.slice(0, 1).toUpperCase()}</span><span><strong>{user.businessName || user.name}</strong><small>{user.specialty || "Professionnel"}</small></span></div></div></header>

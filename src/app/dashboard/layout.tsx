@@ -13,6 +13,7 @@ import ClientNavigation from "@/components/client/ClientNavigation";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import NotificationProvider from "@/components/notifications/NotificationProvider";
 import ChatNotifications from "@/components/ChatNotifications";
+import FloatingAssistant from "@/components/client/FloatingAssistant";
 import "./realtime-chat.css";
 import "./intervention-journey.css";
 import "./notifications.css";
@@ -32,6 +33,6 @@ export default async function ClientLayout({ children }: { children: React.React
       <div className="client-account"><NotificationBell/><ClientAvatar name={user.name} hasPhoto={!!user.profilePhotoMime}/><span><small>ESPACE CLIENT</small><strong>{user.name}</strong></span></div>
     </header>
     <main className="client-content">{children}</main>
-    <footer className="client-footer"><HomeFixBrand/><span>Les bons pros. La tranquillité en plus.</span><a href="mailto:contact@homefix.tn">Besoin d’aide ? ↗</a></footer>
-  </div></div></NotificationProvider>;
+    <footer className="client-footer"><HomeFixBrand/><span>Les bons pros. La tranquillité en plus.</span><Link href="/dashboard/reclamations">Besoin d’aide ? ↗</Link></footer>
+  </div><FloatingAssistant/></div></NotificationProvider>;
 }

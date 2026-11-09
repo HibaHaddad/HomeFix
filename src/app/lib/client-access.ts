@@ -6,6 +6,6 @@ export async function getClient() {
   if (!session) return null;
   return prisma.user.findFirst({
     where: { id: session.userId, role: "CLIENT", status: "ACTIVE" },
-    select: { id: true, name: true },
+    select: { id: true, name: true, city: true },
   });
 }
