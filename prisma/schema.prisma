@@ -20,6 +20,9 @@ model User {
   password          String
   role              String   @default("CLIENT")
   status            String   @default("ACTIVE")
+  isSuspended       Boolean  @default(false)
+  suspensionReason  String?
+  suspensionUpdatedAt DateTime?
   verificationReason String?
   verifiedAt        DateTime?
   verifiedById      Int?
