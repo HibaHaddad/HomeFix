@@ -30,6 +30,7 @@ export default function AdminRequestDetail({ request }: { request: RequestDetail
 
   return <div className="admin-content admin-request-detail-page">
     <Link href="/admin/demandes" className="admin-back-link"><ArrowLeft size={14}/>Retour aux demandes</Link>
+    <Link href={`/admin/messagerie/${request.conversationId ?? request.id}`} prefetch={false} className="admin-back-link">Consulter les échanges · Accès journalisé</Link>
 
     <div className="admin-page-heading admin-request-detail-heading"><div><div className="admin-eyebrow"><span/>SUPERVISION · #{request.id}</div><h1>{request.title}</h1><p>{request.category} · Créée le {dateFormat.format(request.createdAt)}</p></div><div className="admin-request-badges"><span className={`admin-request-kind ${isMessage ? "is-message" : "is-service"}`}>{kindLabel}</span><span className={`admin-status status-${request.status.toLowerCase()}`}><i/>{label(request.status)}</span>{request.urgency === "URGENT" && <span className="admin-request-urgency urgency-urgent">Urgente</span>}</div></div>
 

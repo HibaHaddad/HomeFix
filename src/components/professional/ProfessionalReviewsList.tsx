@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, MessageSquare, RotateCcw, Star, Wrench } from "lucide-react";
 import styles from "./ProfessionalReviews.module.css";
+import ReportReview from "./ReportReview";
 
 type Review = {
   id: number;
@@ -46,6 +47,7 @@ export default function ProfessionalReviewsList({ reviews }: { reviews: Review[]
       <header><div><strong>{review.client.name}</strong>{review.request && <p>{review.request.title}</p>}</div><time dateTime={review.createdAt}>{new Date(review.createdAt).toLocaleDateString("fr-TN", { timeZone: "Africa/Tunis" })}</time></header>
       <div className={styles.stars} aria-label={review.rating !== null ? `${review.rating} sur 5` : "Avis sans note"}>{review.rating !== null ? <>{[1, 2, 3, 4, 5].map((n) => <Star aria-hidden="true" key={n} size={14} fill={n <= review.rating! ? "currentColor" : "none"} />)}<span>{review.rating}/5</span></> : <span>Avis écrit</span>}</div>
       {review.comment && <p className={styles.comment}>{review.comment}</p>}
+      <ReportReview id={review.id}/>
     </article>)}</div>
     {!filtered.length && <div className={styles.empty}><MessageSquare size={21} /><p>{hasFilters ? "Aucun avis ne correspond à ces filtres." : "Les avis apparaîtront après le paiement confirmé des interventions."}</p>{hasFilters && <button type="button" onClick={reset}>Afficher tous les avis</button>}</div>}
     {pageCount > 1 && <nav className={styles.pagination} aria-label="Pagination des avis">

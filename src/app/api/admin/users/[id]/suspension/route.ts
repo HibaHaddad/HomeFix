@@ -3,6 +3,7 @@ import { adminUsersErrorResponse } from "@/app/lib/admin-users";
 import { prisma } from "@/app/lib/prisma";
 import { chatServer, userRoom } from "@/app/lib/chat-events";
 import { hasAllowedRequestOrigin } from "@/lib/request-origin";
+import { audit } from "@/app/lib/admin-audit";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!hasAllowedRequestOrigin(request)) return Response.json({ error: "Origine non autorisée." }, { status: 403 });
@@ -40,13 +41,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   let result;
   try {
-    result = await prisma.user.updateMany({
+    result = await prisma.$transaction(async tx => {
+      const updated = await tx.user.updateMany({
       where: { id: userId, role: { not: "ADMIN" }, isSuspended: !suspending },
       data: {
         isSuspended: suspending,
-        ...(suspending ? { suspensionReason: reason } : {}),
+        suspensionReason: suspending ? reason : null,
         suspensionUpdatedAt: new Date(),
       },
+      });
+      if (updated.count === 1) await audit(tx, access.admin, suspending ? "USER_SUSPEND" : "USER_REACTIVATE", `user:${userId}`, suspending ? reason : undefined);
+      return updated;
     });
   } catch (error) {
     return adminUsersErrorResponse(error, "updating user suspension");

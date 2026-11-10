@@ -58,6 +58,7 @@ model User {
   termsAccepted     Boolean  @default(false)
   createdAt         DateTime @default(now())
   assistantConversations AssistantConversation[]
+  reviewReports ReviewReport[]
 
   @@index([role, status, isPublic, createdAt])
 }
@@ -88,6 +89,9 @@ model ProfessionalReview {
   rating         Int?
   comment        String
   published      Boolean @default(false)
+  moderationStatus String @default("NONE")
+  moderationReason String?
+  reports ReviewReport[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @default(now()) @updatedAt
   requestId      Int? @unique
@@ -258,7 +262,55 @@ model CheckoutPayment {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
   invoice ClientInvoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  refund AdminRefund?
   @@index([invoiceId, createdAt])
+}
+
+model AdminAuditLog {
+  id Int @id @default(autoincrement())
+  actorId Int
+  actorName String
+  action String
+  target String
+  reason String?
+  details Json @default("{}")
+  createdAt DateTime @default(now())
+  @@index([createdAt, id])
+  @@index([action, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model ReviewReport {
+  id Int @id @default(autoincrement())
+  reviewId Int
+  reporterId Int
+  reason String
+  status String @default("OPEN")
+  createdAt DateTime @default(now())
+  review ProfessionalReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  @@unique([reviewId, reporterId])
+  @@index([status, createdAt])
+}
+
+model AdminSetting {
+  key String @id
+  value Json
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model AdminRefund {
+  id String @id @default(uuid())
+  paymentId String @unique
+  actorId Int
+  reason String
+  amountMillimes Int
+  status String @default("PENDING")
+  stripeRefundId String? @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  payment CheckoutPayment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  @@index([status, createdAt])
 }
 
 model StripeWebhookEvent {

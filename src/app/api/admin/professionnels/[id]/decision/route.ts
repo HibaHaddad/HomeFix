@@ -2,6 +2,7 @@ import { requireAdmin } from "@/app/lib/admin-access";
 import { professionalAdminErrorResponse } from "@/app/lib/admin-professionals";
 import { prisma } from "@/app/lib/prisma";
 import { hasAllowedRequestOrigin } from "@/lib/request-origin";
+import { audit } from "@/app/lib/admin-audit";
 
 const requiredFields = ["businessName", "specialty", "experience", "serviceCity", "coveredAreas"] as const;
 
@@ -59,6 +60,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           verifiedById: access.admin.id,
         },
       });
+      if (updated.count === 1) {
+        await audit(tx, access.admin, `PROFESSIONAL_${decision}`, `user:${id}`, decision === "REJECTED" ? reason : undefined);
+        await tx.clientNotification.create({ data: { userId: id, title: decision === "APPROVED" ? "Votre dossier professionnel a été approuvé" : "Votre dossier professionnel a été refusé", type: "INFO", href: "/professionnel/profil" } });
+      }
       return updated.count === 1 ? { kind: "updated" as const } : { kind: "conflict" as const };
     }, { isolationLevel: "Serializable" });
 

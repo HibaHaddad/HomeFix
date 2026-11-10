@@ -1,4 +1,5 @@
 import { prisma } from "@/app/lib/prisma";
+import "server-only";
 
 export const dashboardPeriods = ["today", "7d", "30d", "12m"] as const;
 export type DashboardPeriod = (typeof dashboardPeriods)[number];
@@ -94,6 +95,12 @@ type BucketCount = { period: string; count: number };
 export async function getAdminDashboardData(period: DashboardPeriod) {
   const range = getDashboardDateRange(period);
   const requestWhere = { kind: { not: "MESSAGE" }, createdAt: { gte: range.start, lt: range.end } };
+  const [gross, refunds, openReports, latestAudit] = await Promise.all([
+    prisma.checkoutPayment.aggregate({ where: { livemode: false, status: { in: ["SUCCEEDED", "REFUNDED"] } }, _sum: { amountMillimes: true } }),
+    prisma.adminRefund.aggregate({ where: { status: "SUCCEEDED" }, _sum: { amountMillimes: true } }),
+    prisma.reviewReport.count({ where: { status: "OPEN" } }),
+    prisma.adminAuditLog.findMany({ orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 6, select: { id: true, action: true, target: true, actorName: true, createdAt: true } }),
+  ]);
   const [
     totalUsers,
     totalClients,
@@ -112,7 +119,7 @@ export async function getAdminDashboardData(period: DashboardPeriod) {
     prisma.user.count({ where: { role: "PROFESSIONAL", status: "APPROVED" } }),
     prisma.serviceRequest.count({ where: { kind: { not: "MESSAGE" } } }),
     prisma.serviceRequest.count({ where: { kind: { not: "MESSAGE" }, status: "COMPLETED" } }),
-    prisma.complaint.count({ where: { status: "OPEN" } }),
+    prisma.complaint.count({ where: { status: { in: ["OPEN", "IN_PROGRESS"] } } }),
     prisma.professionalReview.count(),
   ]);
 
@@ -127,7 +134,7 @@ export async function getAdminDashboardData(period: DashboardPeriod) {
     latestComplaints,
   ] = await Promise.all([
     prisma.$queryRaw<BucketCount[]>`
-      SELECT TO_CHAR(DATE_TRUNC(${range.bucket}, "createdAt" AT TIME ZONE ${range.timeZone}), ${range.bucket === "day" ? "YYYY-MM-DD" : "YYYY-MM"}) AS period,
+      SELECT TO_CHAR(DATE_TRUNC(${range.bucket}, ("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${range.timeZone}), ${range.bucket === "day" ? "YYYY-MM-DD" : "YYYY-MM"}) AS period,
              COUNT(*)::int AS count
       FROM "User"
       WHERE "createdAt" >= ${range.start} AND "createdAt" < ${range.end}
@@ -141,7 +148,7 @@ export async function getAdminDashboardData(period: DashboardPeriod) {
         WHERE event.status = 'COMPLETED' AND request.kind <> 'MESSAGE' AND request.status = 'COMPLETED'
         ORDER BY event."requestId", event."createdAt" ASC
       )
-      SELECT TO_CHAR(DATE_TRUNC(${range.bucket}, "createdAt" AT TIME ZONE ${range.timeZone}), ${range.bucket === "day" ? "YYYY-MM-DD" : "YYYY-MM"}) AS period,
+      SELECT TO_CHAR(DATE_TRUNC(${range.bucket}, ("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${range.timeZone}), ${range.bucket === "day" ? "YYYY-MM-DD" : "YYYY-MM"}) AS period,
              COUNT(*)::int AS count
       FROM completed_interventions
       WHERE "createdAt" >= ${range.start} AND "createdAt" < ${range.end}
@@ -166,6 +173,9 @@ export async function getAdminDashboardData(period: DashboardPeriod) {
     kpis: {
       totalUsers, totalClients, totalProfessionals, pendingProfessionals,
       approvedProfessionals, totalRequests, completedRequests, openComplaints, totalReviews,
+      grossTnd: (gross._sum.amountMillimes ?? 0) / 1000,
+      netTnd: ((gross._sum.amountMillimes ?? 0) - (refunds._sum.amountMillimes ?? 0)) / 1000,
+      openReports,
     },
     signups: series(signupBuckets),
     completed: series(completedBuckets),
@@ -175,5 +185,6 @@ export async function getAdminDashboardData(period: DashboardPeriod) {
     latestProfessionals,
     latestRequests,
     latestComplaints,
+    latestAudit,
   };
 }

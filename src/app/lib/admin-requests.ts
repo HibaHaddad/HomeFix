@@ -112,7 +112,7 @@ export async function getAdminRequestDetail(id: number) {
   const request = await prisma.serviceRequest.findUnique({
     where: { id },
     select: {
-      id: true, kind: true, title: true, message: true, category: true, urgency: true,
+      id: true, kind: true, conversationId: true, title: true, message: true, category: true, urgency: true,
       address: true, preferredDates: true, status: true, clientConfirmedAt: true, createdAt: true, updatedAt: true,
       client: { select: { id: true, name: true, email: true, phone: true } },
       professional: { select: { id: true, name: true, businessName: true, email: true, phone: true } },
@@ -132,6 +132,7 @@ export async function getAdminRequestDetail(id: number) {
 
   return {
     ...request,
+    message: request.kind === "MESSAGE" ? "Consultez la messagerie avec un motif pour accéder au message initial." : request.message,
     events: request.events.map((event) => ({ ...event, actor: actorById.get(event.actorId) ?? null })),
   };
 }

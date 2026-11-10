@@ -2,9 +2,10 @@ import Link from "next/link";
 import { ArrowLeft, ClipboardList, MessageSquare, UserRound } from "lucide-react";
 import type { getAdminComplaintDetail } from "@/app/lib/admin-complaints";
 import AdminComplaintResponseForm from "@/components/admin/AdminComplaintResponseForm";
+import AdminAction from "@/components/admin/AdminAction";
 
 type ComplaintDetail = NonNullable<Awaited<ReturnType<typeof getAdminComplaintDetail>>>;
-const labels: Record<string, string> = { OPEN: "Ouverte", RESOLVED: "Résolue" };
+const labels: Record<string, string> = { OPEN: "Ouverte", IN_PROGRESS: "En cours", RESOLVED: "Résolue", CLOSED: "Clôturée" };
 const dateFormat = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeZone: "Africa/Tunis" });
 const dateTimeFormat = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Tunis" });
 
@@ -39,6 +40,7 @@ export default function AdminComplaintDetail({ complaint }: { complaint: Complai
         {complaint.request ? <dl className="admin-complaint-info-grid"><Info title="Référence" value={`#${complaint.request.id}`}/><Info title="Sujet" value={complaint.request.title}/><Info title="Catégorie" value={complaint.request.category}/><Info title="Statut de la demande" value={complaint.request.status}/><Info title="Création de la demande" value={dateTimeFormat.format(complaint.request.createdAt)}/></dl> : <p className="admin-complaint-no-response">Cette réclamation concerne une question générale, sans demande associée.</p>}
       </article>
     </div>
-    <p className="admin-complaint-readonly-note">Le statut n’est pas modifiable ici. Toute réponse envoyée au client est définitive.</p>
+    <AdminAction label="Mettre à jour le suivi" method="PATCH" endpoint={`/api/admin/reclamations/${complaint.id}/status`} fields={[{ name: "status", label: "Nouveau statut", type: "select", value: complaint.status, options: Object.entries(labels).map(([value, label]) => ({ value, label })) }, { name: "reason", label: "Motif du changement", type: "textarea" }]}/>
+    <p className="admin-complaint-readonly-note">Une réponse est nécessaire avant résolution ou clôture. Les changements de statut sont journalisés.</p>
   </div>;
 }

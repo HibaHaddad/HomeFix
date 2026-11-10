@@ -26,7 +26,8 @@ export async function GET(request: Request) {
     let available = false, reason = "";
     const attempt = invoice ? await prisma.checkoutPayment.findFirst({ where: { invoiceId: invoice.id }, orderBy: { createdAt: "desc" }, select: { currency: true, stripeAmount: true, exchangeRatePpm: true, amountMillimes: true, priorPaidMillimes: true, livemode: true, status: true } }) : null;
     let conversion = attempt && !attempt.livemode && !["EXPIRED", "FAILED"].includes(attempt.status) ? { currency: attempt.currency, stripeAmount: attempt.stripeAmount ?? attempt.amountMillimes, exchangeRatePpm: attempt.exchangeRatePpm ?? 1000000, balanceMillimes: attempt.amountMillimes, priorPaidMillimes: attempt.priorPaidMillimes } : null;
-    if (invoice?.status !== "PAID") {
+    if (invoice?.status === "REFUNDED") reason = "Ce paiement a été remboursé. Aucun nouveau règlement n’est attendu.";
+    if (invoice?.status !== "PAID" && invoice?.status !== "REFUNDED") {
       try {
         const eligible = await stripeEligibility();
         if (!invoice || r.quotes.length !== 1 || invoice.totalMillimes !== r.quotes[0].amountMillimes || r.status !== "COMPLETED") throw new PaymentError("Le paiement sera disponible après la fin de l’intervention et l’acceptation du prix.");

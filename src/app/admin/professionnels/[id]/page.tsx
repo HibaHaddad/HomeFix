@@ -4,8 +4,10 @@ import { prisma } from "@/app/lib/prisma";
 import ProfessionalReviewActions from "@/components/admin/ProfessionalReviewActions";
 import AdminIcon from "@/components/admin/AdminIcon";
 import "../professionals.css";
+import { requireAdminPage } from "@/app/lib/admin-access";
 
 export default async function ProfessionalReviewDetail({ params }: PageProps<"/admin/professionnels/[id]">) {
+  await requireAdminPage();
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isSafeInteger(id) || id < 1) notFound();

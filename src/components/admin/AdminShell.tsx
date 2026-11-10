@@ -6,7 +6,7 @@ import { useState } from "react";
 import {
   Activity, Bell, BriefcaseBusiness, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardList, FolderKanban, LayoutDashboard, Menu, MessageSquareWarning,
-  Search, Settings, ShieldCheck, SlidersHorizontal, Star, Users, X,
+  Search, Settings, ShieldCheck, Star, Users, X, CalendarDays, CreditCard, MessagesSquare, Scale,
 } from "lucide-react";
 import HomeFixBrand from "@/components/HomeFixBrand";
 import LogoutButton from "@/components/LogoutButton";
@@ -15,13 +15,17 @@ const navigation = [
   { label: "Vue générale", href: "/admin", icon: LayoutDashboard, available: true, group: "Pilotage" },
   { label: "Utilisateurs", href: "/admin/utilisateurs", icon: Users, available: true, group: "Gestion" },
   { label: "Prestataires", href: "/admin/professionnels", icon: BriefcaseBusiness, available: true, group: "Gestion" },
-  { label: "Demandes", href: "/admin/demandes", icon: ClipboardList, available: true, group: "Gestion" },
+  { label: "Demandes et interventions", href: "/admin/demandes", icon: ClipboardList, available: true, group: "Gestion" },
+  { label: "Réservations", href: "/admin/reservations", icon: CalendarDays, available: true, group: "Gestion" },
   { label: "Catégories", href: "/admin/categories", icon: FolderKanban, available: true, group: "Gestion" },
   { label: "Réclamations", href: "/admin/reclamations", icon: MessageSquareWarning, available: true, group: "Modération" },
-  { label: "Avis et modération", href: "/admin/avis", icon: Star, available: false, group: "Modération" },
-  { label: "Statistiques", href: "/admin/statistiques", icon: SlidersHorizontal, available: false, group: "Système" },
-  { label: "Logs et activités", href: "/admin/activites", icon: Activity, available: false, group: "Système" },
-  { label: "Paramètres", href: "/admin/parametres", icon: Settings, available: false, group: "Système" },
+  { label: "Avis et modération", href: "/admin/avis", icon: Star, available: true, group: "Modération" },
+  { label: "Messagerie", href: "/admin/messagerie", icon: MessagesSquare, available: true, group: "Modération" },
+  { label: "Paiements", href: "/admin/paiements", icon: CreditCard, available: true, group: "Finance" },
+  { label: "Sanctions et pénalités", href: "/admin/sanctions", icon: Scale, available: true, group: "Finance" },
+  { label: "Notifications", href: "/admin/notifications", icon: Bell, available: true, group: "Système" },
+  { label: "Journal d’audit", href: "/admin/activites", icon: Activity, available: true, group: "Système" },
+  { label: "Paramètres", href: "/admin/parametres", icon: Settings, available: true, group: "Système" },
 ] as const;
 
 const titles: Record<string, string> = {
@@ -31,13 +35,21 @@ const titles: Record<string, string> = {
   "/admin/demandes": "Demandes",
   "/admin/categories": "Catégories",
   "/admin/reclamations": "Réclamations",
+  "/admin/reservations": "Réservations",
+  "/admin/avis": "Avis et modération",
+  "/admin/messagerie": "Messagerie",
+  "/admin/paiements": "Paiements",
+  "/admin/sanctions": "Sanctions et pénalités",
+  "/admin/notifications": "Notifications",
+  "/admin/activites": "Journal d’audit",
+  "/admin/parametres": "Paramètres",
 };
 
 function initials(name: string) {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join("");
 }
 
-export default function AdminShell({ adminName, children }: { adminName: string; children: React.ReactNode }) {
+export default function AdminShell({ adminName, unreadCount, children }: { adminName: string; unreadCount: number; children: React.ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -50,6 +62,8 @@ export default function AdminShell({ adminName, children }: { adminName: string;
       ? "Détail de la réclamation"
     : pathname.startsWith("/admin/utilisateurs/")
       ? "Fiche utilisateur"
+    : pathname.startsWith("/admin/messagerie/")
+      ? "Consultation d’une conversation"
     : titles[pathname] ?? "Administration";
   const groups = [...new Set(navigation.map((item) => item.group))];
 
@@ -63,7 +77,7 @@ export default function AdminShell({ adminName, children }: { adminName: string;
       {mobileOpen && <button className="admin-mobile-backdrop" aria-label="Fermer le menu" onClick={() => setMobileOpen(false)} />}
       <aside className="admin-sidebar" aria-label="Navigation admin">
         <div className="admin-sidebar-top">
-          <HomeFixBrand subtitle="HOMEFIX TN" className="admin-workspace-brand" />
+          <HomeFixBrand inverse subtitle="ESPACE ADMINISTRATION" className="admin-workspace-brand" />
           <button className="admin-icon-button admin-mobile-close" aria-label="Fermer le menu" onClick={() => setMobileOpen(false)}><X size={19} /></button>
         </div>
         <div className="admin-navigation">
@@ -106,8 +120,8 @@ export default function AdminShell({ adminName, children }: { adminName: string;
             <div className="admin-breadcrumbs" aria-label="Fil d’Ariane"><span>Administration</span><ChevronRight size={14} aria-hidden="true" /><strong>{title}</strong></div>
           </div>
           <div className="admin-header-actions">
-            <label className="admin-global-search"><Search size={17} aria-hidden="true" /><input type="search" placeholder="Rechercher…" aria-label="Recherche visuelle, non disponible" disabled /><kbd>⌘ K</kbd></label>
-            <button className="admin-icon-button admin-notification-button" type="button" aria-label="Notifications, indisponibles" title="Les notifications admin ne sont pas encore disponibles" disabled><Bell size={19} /></button>
+            <form className="admin-global-search" action="/admin/utilisateurs"><Search size={17} aria-hidden="true" /><input type="search" name="q" placeholder="Rechercher un utilisateur…" aria-label="Rechercher un utilisateur" maxLength={100}/><button className="sr-only" type="submit">Rechercher</button></form>
+            <Link href="/admin/notifications" className="admin-icon-button admin-notification-button" aria-label={`Notifications · ${unreadCount} non lues`}><Bell size={19} />{unreadCount > 0 && <span className="aw-bell-count">{unreadCount > 99 ? "99+" : unreadCount}</span>}</Link>
             <div className="admin-account-menu">
               <button className="admin-account-trigger" aria-expanded={profileOpen} aria-haspopup="menu" onClick={() => setProfileOpen((value) => !value)}>
                 <span className="admin-avatar" aria-hidden="true">{initials(adminName)}</span>
@@ -122,7 +136,7 @@ export default function AdminShell({ adminName, children }: { adminName: string;
             </div>
           </div>
         </header>
-        <div className="admin-page-content">{children}</div>
+        <div className="admin-page-content"><div className="admin-route-stage" key={pathname}>{children}</div></div>
       </main>
     </div>
   );

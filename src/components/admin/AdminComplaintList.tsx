@@ -5,7 +5,7 @@ import type { getAdminComplaintList } from "@/app/lib/admin-complaints";
 type Result = Awaited<ReturnType<typeof getAdminComplaintList>>;
 const numberFormat = new Intl.NumberFormat("fr-FR");
 const dateFormat = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeZone: "Africa/Tunis" });
-const labels: Record<string, string> = { OPEN: "Ouverte", RESOLVED: "Résolue" };
+const labels: Record<string, string> = { OPEN: "Ouverte", IN_PROGRESS: "En cours", RESOLVED: "Résolue", CLOSED: "Clôturée" };
 
 function label(status: string) {
   if (!status.trim()) return "Statut vide";

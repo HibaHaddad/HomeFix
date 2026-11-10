@@ -23,6 +23,7 @@ function result(intent: Stripe.PaymentIntent, requestId: number) {
 export async function createCardPayment(clientId: number, requestId: number, eligibility = stripeEligibility) {
   const record = await ownedPaymentRequest(clientId, requestId);
   const quote = record.quotes[0], invoice = quote?.invoice;
+  if (invoice?.status === "REFUNDED") throw new PaymentError("Ce paiement a été remboursé. Aucun nouveau règlement n’est attendu.");
   if (record.status !== "COMPLETED" || !invoice || record.quotes.length !== 1 || invoice.totalMillimes !== quote.amountMillimes) throw new PaymentError("Le paiement nécessite une intervention terminée et un prix final accepté.");
   if (invoice.status === "PAID") return { url: `${new URL(process.env.APP_ORIGIN || "http://localhost:3000").origin}/dashboard/paiements/${requestId}`, status: "PAID" };
   const { stripe, account, live, supportedCurrencies } = await eligibility();
@@ -30,6 +31,7 @@ export async function createCardPayment(clientId: number, requestId: number, eli
   const prepared = await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "ClientInvoice" WHERE "id" = ${invoice.id} FOR UPDATE`;
     const current = await tx.clientInvoice.findUniqueOrThrow({ where: { id: invoice.id } });
+    if (current.status === "REFUNDED") throw new PaymentError("Ce paiement a été remboursé.");
     if (current.status === "PAID") return { done: true as const };
     const balance = current.totalMillimes - current.paidMillimes;
     if (current.totalMillimes !== quote.amountMillimes || current.paidMillimes < 0 || balance <= 0) throw new PaymentError("Le solde doit être vérifié avant le paiement.");
@@ -94,7 +96,7 @@ export async function handleCardPaymentEvent(event: Stripe.Event, stripe = strip
     const r = invoice.quote.request;
     if (invoice.totalMillimes !== payment.priorPaidMillimes + payment.amountMillimes || invoice.quote.status !== "ACCEPTED" || invoice.quote.amountMillimes !== invoice.totalMillimes || r.status !== "COMPLETED") throw new PaymentError("La facture ne correspond pas au prix accepté.", 400);
     await tx.stripeWebhookEvent.create({ data: { id: event.id, type: event.type } });
-    if (invoice.status === "PAID") return null;
+    if (["PAID", "REFUNDED"].includes(invoice.status)) return null;
     if (invoice.paidMillimes !== payment.priorPaidMillimes) throw new PaymentError("Le solde du paiement doit être vérifié.");
     const fresh = await tx.checkoutPayment.findUniqueOrThrow({ where: { id: payment.id } });
     if (!paid) {

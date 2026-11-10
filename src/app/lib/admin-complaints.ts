@@ -3,6 +3,7 @@ import { requireAdmin } from "@/app/lib/admin-access";
 import { prisma } from "@/app/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { chatServer, userRoom } from "@/app/lib/chat-events";
+import { audit } from "./admin-audit";
 
 const PAGE_SIZE = 20;
 const MAX_PAGE = 100_000;
@@ -54,7 +55,7 @@ export async function getAdminComplaintList(filters: AdminComplaintFilters) {
   const [statusGroups, total, open, withResponse, withoutResponse] = await Promise.all([
     prisma.complaint.groupBy({ by: ["status"], orderBy: { status: "asc" } }),
     prisma.complaint.count(),
-    prisma.complaint.count({ where: { status: "OPEN" } }),
+    prisma.complaint.count({ where: { status: { in: ["OPEN", "IN_PROGRESS"] } } }),
     prisma.complaint.count({ where: { AND: [{ response: { not: null } }, { response: { not: "" } }] } }),
     prisma.complaint.count({ where: { OR: [{ response: null }, { response: "" }] } }),
   ]);
@@ -147,6 +148,7 @@ export async function sendAdminComplaintResponse(id: number, rawResponse: unknow
       where: { id },
       select: { id: true, subject: true, clientId: true, client: { select: { notificationEnabled: true } } },
     });
+    await audit(tx, access.admin, "COMPLAINT_RESPONSE", `complaint:${id}`, undefined, { responseLength: response.length });
     const notification = complaint.client.notificationEnabled
       ? await tx.clientNotification.create({
         data: {

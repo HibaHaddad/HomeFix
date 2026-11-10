@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "tsx server.ts --production",
     "lint": "eslint",
+    "test:admin": "node scripts/test-admin.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "stripe:setup": "node scripts/stripe-local.mjs setup",

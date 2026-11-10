@@ -16,6 +16,7 @@ export default function PaymentResult({ requestId, cancelled, returned, startPay
   const [showCard, setShowCard] = useState(startPayment || (!returned && !cancelled));
   const [waiting, setWaiting] = useState(returned);
   const paid = data?.status === "PAID";
+  const refunded = data?.status === "REFUNDED";
   const pending = !paid && (waiting || data?.checkoutStatus === "PROCESSING");
   const reload = useCallback(() => loadPayment(requestId).then((r) => { setData(r); setError(""); }).catch((e) => setError(e.message)), [requestId]);
   useEffect(() => {
@@ -28,15 +29,16 @@ export default function PaymentResult({ requestId, cancelled, returned, startPay
     return () => { socket.off("intervention:updated", update); socket.off("connect", refresh); window.removeEventListener("focus", refresh); };
   }, [reload, requestId]);
   useEffect(() => {
-    if (paid || (!pending && !showCard)) return;
+    if (paid || refunded || (!pending && !showCard)) return;
     // Another tab may settle the same invoice while this form is open.
     const timer = setInterval(() => void reload(), 5000);
     return () => clearInterval(timer);
-  }, [paid, pending, showCard, reload]);
+  }, [paid, refunded, pending, showCard, reload]);
   const completed = useCallback(() => {
     setShowCard(false); setWaiting(true); void reload();
     router.replace(`/dashboard/paiements/${requestId}/succes`);
   }, [reload, requestId, router]);
+  if (refunded) return <div className="hf-payment-page"><Link className="cx-text-btn" href="/dashboard/paiements"><ArrowLeft size={15}/>Mes paiements</Link><section className="cx-panel hf-payment-confirmation"><ShieldCheck size={28}/><span className="cx-eyebrow">STRIPE TEST</span><h1>Paiement remboursé</h1><p>Le remboursement de cette transaction a été confirmé. Aucun nouveau règlement n’est attendu pour cette facture.</p><Link className="cx-btn" href={`/dashboard/interventions?demande=${requestId}`}>Voir mon intervention</Link></section></div>;
   return <div className="hf-payment-page">
     <Link className="cx-text-btn hf-payment-back" href={`/dashboard/interventions?demande=${requestId}#intervention-${requestId}`}><ArrowLeft size={15}/>Mon intervention</Link>
     <header className="hf-payment-heading"><div><span className="cx-eyebrow">HOMEFIX TN · PAIEMENT SÉCURISÉ</span><h1>{paid ? "Merci pour votre confiance" : cancelled ? "Paiement interrompu" : "Votre paiement"}</h1><p>{paid ? "Votre règlement est confirmé. Tout est en ordre." : "Un dernier geste, et votre intervention est réglée."}</p></div><span className="hf-secure-badge"><ShieldCheck size={16}/>Paiement sécurisé</span></header>

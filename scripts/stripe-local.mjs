@@ -9,7 +9,7 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 const envPath = join(root, ".env");
 const privateDir = join(root, ".stripe-local");
 const command = process.argv[2];
-const events = ["payment_intent.succeeded", "payment_intent.processing", "payment_intent.payment_failed", "payment_intent.canceled", "checkout.session.completed", "checkout.session.async_payment_succeeded", "checkout.session.async_payment_failed", "checkout.session.expired"];
+const events = ["payment_intent.succeeded", "payment_intent.processing", "payment_intent.payment_failed", "payment_intent.canceled", "checkout.session.completed", "checkout.session.async_payment_succeeded", "checkout.session.async_payment_failed", "checkout.session.expired", "refund.created", "refund.updated", "refund.failed"];
 const target = "http://localhost:3000/api/stripe/webhook";
 const scrub = (value) => String(value).replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "").replace(/(?:sk|rk|pk)_(?:live|test)_[a-zA-Z0-9]+|whsec_[a-zA-Z0-9]+/g, "[secret masqué]");
 

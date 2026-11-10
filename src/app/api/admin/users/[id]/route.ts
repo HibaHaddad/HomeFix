@@ -2,6 +2,7 @@ import { requireAdmin } from "@/app/lib/admin-access";
 import { adminUsersErrorResponse, getAdminUserDetail } from "@/app/lib/admin-users";
 import { prisma } from "@/app/lib/prisma";
 import { hasAllowedRequestOrigin } from "@/lib/request-origin";
+import { audit } from "@/app/lib/admin-audit";
 
 async function targetId(params: Promise<{ id: string }>) {
   const { id: rawId } = await params;
@@ -70,7 +71,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (email && await prisma.user.findFirst({ where: { email, id: { not: id } }, select: { id: true } })) {
       return Response.json({ error: "Cette adresse e-mail est déjà utilisée." }, { status: 409 });
     }
-    const result = await prisma.user.updateMany({ where: { id, role: { not: "ADMIN" } }, data });
+    const result = await prisma.$transaction(async tx => {
+      const result = await tx.user.updateMany({ where: { id, role: { not: "ADMIN" } }, data });
+      if (result.count === 1) await audit(tx, access.admin, "USER_UPDATE", `user:${id}`, undefined, { fields: keys });
+      return result;
+    });
     if (result.count !== 1) return Response.json({ error: "Utilisateur introuvable ou non modifiable." }, { status: 404 });
     return Response.json({ ok: true });
   } catch (error) {

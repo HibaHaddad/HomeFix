@@ -33,8 +33,9 @@ export async function getSession():
   const token = store.get(COOKIE_NAME)?.value;
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, secret);
-    return { userId: payload.userId as number };
+    const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
+    if (typeof payload.userId !== "number" || !Number.isSafeInteger(payload.userId) || payload.userId < 1 || payload.userId > 2147483647) return null;
+    return { userId: payload.userId };
   } catch {
     return null; // token invalide ou expiré
   }

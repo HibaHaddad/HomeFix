@@ -66,6 +66,7 @@ export async function createCheckout(clientId: number, requestId: number, eligib
   const record = await ownedPaymentRequest(clientId, requestId);
   if (record.status !== "COMPLETED") throw new PaymentError("Le professionnel doit d’abord terminer l’intervention.");
   const quote = record.quotes[0], invoice = quote?.invoice;
+  if (invoice?.status === "REFUNDED") throw new PaymentError("Ce paiement a été remboursé. Aucun nouveau règlement n’est attendu.");
   if (!invoice || record.quotes.length !== 1 || invoice.totalMillimes !== quote.amountMillimes) throw new PaymentError("Le prix final accepté doit être vérifié avant le paiement.");
   if (invoice.status === "PAID") return { url: `${appOrigin()}/dashboard/paiements/${requestId}` };
   const { stripe, account, live, supportedCurrencies } = await eligibility();
@@ -74,6 +75,7 @@ export async function createCheckout(clientId: number, requestId: number, eligib
     // Serialize the complete Checkout decision for this invoice, across workers.
     await tx.$queryRaw`SELECT "id" FROM "ClientInvoice" WHERE "id" = ${invoice.id} FOR UPDATE`;
     const current = await tx.clientInvoice.findUniqueOrThrow({ where: { id: invoice.id } });
+    if (current.status === "REFUNDED") throw new PaymentError("Ce paiement a été remboursé.");
     if (current.status === "PAID") return { url: `${appOrigin()}/dashboard/paiements/${requestId}` };
     const balance = current.totalMillimes - current.paidMillimes;
     if (current.totalMillimes !== quote.amountMillimes || current.paidMillimes < 0 || balance <= 0) throw new PaymentError("Le solde de la facture doit être vérifié avant le paiement.");
@@ -118,6 +120,10 @@ export async function createCheckout(clientId: number, requestId: number, eligib
 /** Called ONLY with a Stripe-signature-verified event. Redirects cannot settle an invoice. */
 export async function handleStripeEvent(event: Stripe.Event, stripe = stripeClient()) {
   if (event.livemode) throw new PaymentError("Les événements Stripe réels sont interdits.", 400);
+  if (event.type.startsWith("refund.")) {
+    const { handleAdminRefundEvent } = await import("./admin-refunds");
+    return handleAdminRefundEvent(event, stripe);
+  }
   if (event.type.startsWith("payment_intent.")) {
     const { handleCardPaymentEvent } = await import("./card-payments");
     return handleCardPaymentEvent(event, stripe);
@@ -142,7 +148,7 @@ export async function handleStripeEvent(event: Stripe.Event, stripe = stripeClie
     const r = invoice.quote.request;
     if (invoice.totalMillimes !== payment.priorPaidMillimes + payment.amountMillimes || invoice.quote.status !== "ACCEPTED" || invoice.quote.amountMillimes !== invoice.totalMillimes || r.status !== "COMPLETED") throw new PaymentError("La facture ne correspond pas au prix accepté.", 400);
     await tx.stripeWebhookEvent.create({ data: { id: event.id, type: event.type } });
-    if (invoice.status === "PAID") return null;
+    if (["PAID", "REFUNDED"].includes(invoice.status)) return null;
     if (invoice.paidMillimes !== payment.priorPaidMillimes) throw new PaymentError("Le solde a changé. Vérification du règlement nécessaire.", 409);
     if (!paid) {
       await tx.checkoutPayment.update({ where: { id: payment.id }, data: { sessionId: session.id, ...(intent ? { paymentIntentId: intent.id } : {}), status: session.status === "expired" ? "EXPIRED" : event.type === "checkout.session.async_payment_failed" ? "FAILED" : "PROCESSING" } });

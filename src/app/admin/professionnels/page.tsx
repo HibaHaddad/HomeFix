@@ -1,8 +1,10 @@
 import { getAdminProfessionalList, parseAdminProfessionalFilters } from "@/app/lib/admin-professionals";
 import ProfessionalReviewList, { type ReviewRow } from "@/components/admin/ProfessionalReviewList";
 import "./professionals.css";
+import { requireAdminPage } from "@/app/lib/admin-access";
 
 export default async function ProfessionalReviewPage({ searchParams }: PageProps<"/admin/professionnels">) {
+  await requireAdminPage();
   const filters = parseAdminProfessionalFilters(await searchParams);
   const result = await getAdminProfessionalList(filters);
   const professionals: ReviewRow[] = result.professionals.map((user) => ({

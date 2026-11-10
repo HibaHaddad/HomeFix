@@ -55,7 +55,7 @@ export function buildProfessionalFinance(invoices: FinanceInvoice[], start: Date
         receiptUrl: invoice.paymentReference === payment.paymentIntentId && invoice.receiptUrl?.startsWith("https://") ? invoice.receiptUrl : null });
     }
     const balance = Math.max(0, invoice.totalMillimes - invoice.paidMillimes);
-    if (balance && invoice.status !== "PAID" && invoice.quote.status === "ACCEPTED"
+    if (balance && !["PAID", "REFUNDED"].includes(invoice.status) && invoice.quote.status === "ACCEPTED"
       && !["CANCELLED", "REJECTED"].includes(request.status) && (!start || invoice.createdAt >= start)) {
       transactions.push({ ...common, id: `pending-${invoice.id}`, kind: "pending", amountMillimes: balance,
         date: invoice.createdAt.toISOString(), reference: null, receiptUrl: null });

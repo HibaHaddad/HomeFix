@@ -8,6 +8,7 @@ import {
   Clock3, FolderKanban, MessageSquareWarning, Users, Star, UserRound, CalendarDays,
 } from "lucide-react";
 import type { DashboardPeriod, getAdminDashboardData } from "@/app/lib/admin-dashboard";
+import AdminOverviewHero from "./AdminOverviewHero";
 
 type DashboardData = Awaited<ReturnType<typeof getAdminDashboardData>>;
 
@@ -72,7 +73,7 @@ function LineChart({ title, points, period, color, emptyLabel }: {
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title} preserveAspectRatio="none">
         {[0, .5, 1].map((fraction) => <g key={fraction}><line x1={left} x2={width - right} y1={y(max * fraction)} y2={y(max * fraction)} className="admin-chart-gridline"/><text x={left - 8} y={y(max * fraction) + 4} textAnchor="end" className="admin-chart-axis">{Math.round(max * fraction)}</text></g>)}
         <path d={area} fill={color} opacity=".09" />
-        <path d={path} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        <path className="admin-chart-line" pathLength={1} d={path} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
         {points.map((point, index) => <circle key={point.key} cx={x(index)} cy={y(point.count)} r="3.5" fill="#fff" stroke={color} strokeWidth="2"><title>{`${chartDateLabel(point.key, period)} : ${numberFormat.format(point.count)}`}</title></circle>)}
         {tickIndexes.map((index) => <text key={index} x={x(index)} y={height - 7} textAnchor={index === 0 ? "start" : index === points.length - 1 ? "end" : "middle"} className="admin-chart-axis">{chartDateLabel(points[index].key, period)}</text>)}
       </svg>
@@ -130,8 +131,11 @@ export default function AdminDashboard({ data }: { data: DashboardData }) {
     { label: "Prestataires approuvés", value: data.kpis.approvedProfessionals, detail: "Profils validés", icon: CheckCircle2, tone: "green" },
     { label: "Demandes", value: data.kpis.totalRequests, detail: "Total des interventions", icon: ClipboardList, tone: "forest" },
     { label: "Terminées", value: data.kpis.completedRequests, detail: "Demandes terminées", icon: CheckCircle2, tone: "sage" },
-    { label: "Réclamations ouvertes", value: data.kpis.openComplaints, detail: "Statut OPEN", icon: MessageSquareWarning, tone: "rose" },
+    { label: "Réclamations à traiter", value: data.kpis.openComplaints, detail: "Ouvertes et en cours", icon: MessageSquareWarning, tone: "rose" },
     { label: "Avis", value: data.kpis.totalReviews, detail: "Tous les avis reçus", icon: Star, tone: "peach" },
+    { label: "Volume encaissé · Test", value: data.kpis.grossTnd, detail: "Référence TND · Sans débit réel", icon: CheckCircle2, tone: "forest" },
+    { label: "Volume net · Test", value: data.kpis.netTnd, detail: "TND · Après remboursements", icon: CheckCircle2, tone: "green" },
+    { label: "Signalements ouverts", value: data.kpis.openReports, detail: "Avis à examiner", icon: Star, tone: "rose" },
   ];
 
   const tabs: { id: ActivityTab; label: string; count: number }[] = [
@@ -142,8 +146,9 @@ export default function AdminDashboard({ data }: { data: DashboardData }) {
   ];
 
   return <div className="admin-content admin-dashboard">
+    <AdminOverviewHero pending={data.kpis.pendingProfessionals} complaints={data.kpis.openComplaints} reports={data.kpis.openReports}/>
     <div className="admin-page-heading admin-dashboard-heading">
-      <div><div className="admin-eyebrow"><span/>ESPACE ADMINISTRATEUR</div><h1>Vue générale</h1><p>Suivez l’activité de HomeFix TN et les indicateurs de la plateforme.</p></div>
+      <div><div className="admin-eyebrow"><span/>ESPACE ADMINISTRATEUR</div><h2>Vue générale</h2><p>Suivez l’activité de HomeFix TN et les indicateurs de la plateforme.</p></div>
       <label className="admin-period-control"><span>Période des graphiques</span><select value={period} onChange={(event) => router.push(`/admin?period=${event.target.value}`)} aria-label="Période des graphiques">{Object.entries(periodLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
     </div>
 
@@ -156,6 +161,7 @@ export default function AdminDashboard({ data }: { data: DashboardData }) {
       </article>)}
     </section>
     <p className="admin-kpi-note"><ArrowDownRight size={14}/> Les indicateurs affichent les totaux actuels ; la période filtre les graphiques ci-dessous.</p>
+    {data.latestAudit.length > 0 && <section className="aw-card"><div className="admin-section-heading"><h2>Dernières actions Admin</h2><Link href="/admin/activites" className="admin-row-link">Voir le journal <ArrowRight size={14}/></Link></div>{data.latestAudit.map(event => <div className="aw-message" key={event.id}><header><strong>{event.actorName} · {event.action}</strong><time>{formatDate(event.createdAt)}</time></header><small>{event.target}</small></div>)}</section>}
 
     <section className="admin-dashboard-section">
       <div className="admin-section-heading"><div><span className="admin-section-kicker">ANALYSE</span><h2>Activité de la plateforme</h2></div><span className="admin-period-chip">{periodLabels[period]}</span></div>

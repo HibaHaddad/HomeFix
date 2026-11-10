@@ -235,7 +235,7 @@ async function mutateOnce(actor: Actor, body: Record<string, unknown>) {
       if (action === "review.update") {
         if (!existing || existing.clientId !== actor.id) throw new WorkflowError("Avis introuvable.", 404);
         if (+existing.createdAt + REVIEW_EDIT_MS < Date.now()) throw new WorkflowError("Les avis sont modifiables pendant 7 jours après leur publication.", 409);
-        await tx.professionalReview.update({ where: { id: existing.id }, data: { ...content, published: true } });
+        await tx.professionalReview.update({ where: { id: existing.id }, data: { ...content, published: existing.moderationStatus !== "HIDDEN" } });
       } else {
         if (existing) throw new WorkflowError("Un avis existe déjà pour cette intervention.", 409);
         await tx.professionalReview.create({ data: { requestId: r.id, clientId: actor.id, professionalId: r.professionalId, ...content, published: true } });
