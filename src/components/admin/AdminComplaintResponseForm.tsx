@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Send } from "lucide-react";
 
-export default function AdminComplaintResponseForm({ complaintId }: { complaintId: number }) {
+export default function AdminComplaintResponseForm({ complaintId, onSuccess }: { complaintId: number; onSuccess?: () => void | Promise<void> }) {
   const router = useRouter();
   const [response, setResponse] = useState("");
   const [busy, setBusy] = useState(false);
@@ -23,6 +23,7 @@ export default function AdminComplaintResponseForm({ complaintId }: { complaintI
       });
       const data = await result.json().catch(() => null);
       if (!result.ok) throw new Error(data?.error || "La réponse n’a pas pu être envoyée.");
+      await onSuccess?.();
       router.refresh();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Connexion impossible. Réessayez.");

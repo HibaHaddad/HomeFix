@@ -6,7 +6,6 @@ import {
 } from "lucide-react";
 import type { getAdminUserDetail } from "@/app/lib/admin-users";
 import UserSuspensionActions from "@/components/admin/UserSuspensionActions";
-import AdminUserEditor from "@/components/admin/AdminUserEditor";
 
 type Detail = NonNullable<Awaited<ReturnType<typeof getAdminUserDetail>>>;
 const dateFormat = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeZone: "Africa/Tunis" });
@@ -52,7 +51,6 @@ export default function AdminUserDetail({ detail, currentAdminId }: { detail: De
       <section className="admin-card admin-user-info-card">
         <div className="admin-user-section-heading"><span className="admin-user-section-icon"><UserRound size={17}/></span><div><h2>Informations générales</h2><p>Coordonnées et statut du compte</p></div></div>
         <dl className="admin-user-info-grid"><Info label="Nom complet" value={user.name}/><Info label="Email" value={user.email}/><Info label="Téléphone" value={user.phone}/><Info label="Adresse" value={user.address}/><Info label="Ville" value={user.city}/><Info label="Rôle" value={roleLabel[user.role] ?? user.role}/><Info label="Statut du compte" value={user.isSuspended ? "Suspendu" : "Actif"}/><Info label="Inscription" value={dateFormat.format(user.createdAt)}/></dl>
-        {user.role !== "ADMIN" && <AdminUserEditor key={user.id} user={{ id: user.id, role: user.role, name: user.name, email: user.email, phone: user.phone, address: user.address, city: user.city, businessName: user.businessName, specialty: user.specialty, description: user.description, experience: user.experience, serviceCity: user.serviceCity, coveredAreas: user.coveredAreas, priceRange: user.priceRange }}/>}
       </section>
 
       {user.role === "PROFESSIONAL" && <section className="admin-card admin-user-info-card">

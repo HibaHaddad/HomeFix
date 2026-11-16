@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import { prisma } from "@/app/lib/prisma";
 import { registerSchema } from "@/app/lib/validation";
 import { createSession } from "@/app/lib/session";
+import { resolveServiceCategory } from "@/app/lib/service-categories";
 
 export async function POST(req: Request) {
   const formData = await req.formData().catch(() => null);
@@ -58,9 +59,15 @@ export async function POST(req: Request) {
     );
   }
 
-  const hash = await bcrypt.hash(password, 10);
   const isProfessional = role === "PROFESSIONAL";
-  const user = await prisma.user.create({
+  const category = isProfessional ? await resolveServiceCategory(specialty ?? "") : null;
+  if (isProfessional && !category?.isActive) return NextResponse.json({ error: "Choisissez une catégorie active. Actualisez le formulaire si nécessaire." }, { status: 400 });
+  const hash = await bcrypt.hash(password, 10);
+  const user = await prisma.$transaction(async tx => {
+    // Hold a shared lock until the new profile is linked; deletion/deactivation waits.
+    const current = category ? (await tx.$queryRaw<{ id: number; name: string }[]>`SELECT id, name FROM "ServiceCategory" WHERE id = ${category.id} AND "isActive" = true FOR SHARE`)[0] : null;
+    if (isProfessional && !current) return null;
+    return tx.user.create({
     data: {
       name: `${firstName} ${lastName}`,
       email,
@@ -71,7 +78,8 @@ export async function POST(req: Request) {
       address: role === "CLIENT" ? address || null : null,
       city: role === "CLIENT" ? city || null : null,
       businessName: isProfessional ? businessName : null,
-      specialty: isProfessional ? specialty : null,
+      specialty: current?.name ?? null,
+      categoryId: current?.id ?? null,
       description: isProfessional ? description || null : null,
       experience: isProfessional ? experience : null,
       serviceCity: isProfessional ? serviceCity : null,
@@ -81,6 +89,8 @@ export async function POST(req: Request) {
       termsAccepted: true,
     },
   });
+  });
+  if (!user) return NextResponse.json({ error: "Cette catégorie n’est plus disponible. Actualisez le formulaire." }, { status: 400 });
 
   if (!isProfessional) {
     await createSession(user.id);

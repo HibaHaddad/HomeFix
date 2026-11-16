@@ -33,7 +33,7 @@ export default async function ProfessionalPage({ params, searchParams }: PagePro
   if (["tableau-de-bord", "demandes", "messagerie", "reservations", "interventions"].includes(section)) {
     const [requests, slots] = await Promise.all([
       prisma.serviceRequest.findMany({ where: { professionalId: session.userId }, include: { ...requestInclude, client: { select: { id: true, name: true, phone: true, email: true } } }, orderBy: { id: "desc" }, take: 100 }),
-      prisma.availabilitySlot.findMany({ where: { professionalId: session.userId, active: true, startsAt: { gt: new Date() } }, orderBy: { startsAt: "asc" }, take: 500 }),
+      prisma.availabilitySlot.findMany({ where: { professionalId: session.userId, active: true, endsAt: { gt: new Date() } }, orderBy: { startsAt: "asc" }, take: 500 }),
     ]);
     const selected = Number((await searchParams).demande);
     if (Number.isSafeInteger(selected) && selected > 0 && !requests.some((r) => r.id === selected)) {

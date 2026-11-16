@@ -2,6 +2,9 @@ import { adminMutation } from "@/app/lib/admin-http";
 import { prisma } from "@/app/lib/prisma";
 import { audit } from "@/app/lib/admin-audit";
 import { adminObject, adminText, AdminActionError, validateSanctions } from "@/lib/admin-validation";
+import { validateDashboardPreferences } from "@/lib/admin-dashboard-preferences";
+import { dashboardPreferenceKey } from "@/app/lib/admin-dashboard-preferences";
+import { validateCommissionBps } from "@/lib/payment-allocation";
 export async function PUT(request: Request) {
   return adminMutation(request, async admin => {
     const body = adminObject(await request.json().catch(() => null), ["key", "value"]);
@@ -14,8 +17,13 @@ export async function PUT(request: Request) {
       const hours = input.complaintSlaHours;
       if (typeof hours !== "number" || !Number.isInteger(hours) || hours < 1 || hours > 720) throw new AdminActionError("Le délai doit être compris entre 1 et 720 heures.");
       value = { supportEmail, complaintSlaHours: hours };
-    } else throw new AdminActionError("Paramètre invalide.");
-    const key = body.key as "GENERAL" | "SANCTION_RULES";
+    } else if (body.key === "PAYMENT_COMMISSION") {
+      const input = adminObject(body.value, ["commissionBps"]);
+      try { value = { commissionBps: validateCommissionBps(input.commissionBps) }; }
+      catch (error) { throw new AdminActionError(error instanceof Error ? error.message : "Commission invalide."); }
+    } else if (body.key === "DASHBOARD_PREFERENCES") value = validateDashboardPreferences(body.value);
+    else throw new AdminActionError("Paramètre invalide.");
+    const key = body.key === "DASHBOARD_PREFERENCES" ? dashboardPreferenceKey(admin.id) : body.key as "GENERAL" | "SANCTION_RULES" | "PAYMENT_COMMISSION";
     await prisma.$transaction(async tx => {
       const previous = await tx.adminSetting.findUnique({ where: { key } });
       await tx.adminSetting.upsert({ where: { key }, create: { key, value }, update: { value } });

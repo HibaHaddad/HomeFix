@@ -4,15 +4,16 @@ import { prisma } from "./prisma";
 import { stripeClient } from "./stripe-payments";
 import { audit } from "./admin-audit";
 import { AdminActionError } from "@/lib/admin-validation";
+import { accountRefund } from "./payment-accounting";
 
 export async function reconcileRefund(refundId: string, stripe = stripeClient()) {
   const record = await prisma.adminRefund.findUnique({ where: { id: refundId }, include: { payment: true } });
-  if (!record || !record.payment.paymentIntentId || record.payment.livemode) throw new AdminActionError("Remboursement Test introuvable.", 404);
+  if (!record || !record.payment.paymentIntentId || record.payment.livemode) throw new AdminActionError("Remboursement introuvable.", 404);
   const payment = record.payment;
   const account = await stripe.accounts.retrieve(null);
   if (account.id !== payment.merchantAccountId) throw new AdminActionError("Le compte marchand ne correspond pas au paiement.", 409);
   const intent = await stripe.paymentIntents.retrieve(payment.paymentIntentId!, { expand: ["latest_charge"] });
-  if (intent.livemode || intent.status !== "succeeded" || intent.currency !== payment.currency || intent.amount_received !== (payment.stripeAmount ?? payment.amountMillimes) || intent.metadata.paymentId !== payment.id) throw new AdminActionError("Le paiement Stripe Test ne correspond pas à la transaction.", 409);
+  if (intent.livemode || intent.status !== "succeeded" || intent.currency !== payment.currency || intent.amount_received !== (payment.stripeAmount ?? payment.amountMillimes) || intent.metadata.paymentId !== payment.id) throw new AdminActionError("Le paiement Stripe ne correspond pas à la transaction.", 409);
   let remote: Stripe.Refund | undefined;
   if (record.stripeRefundId) remote = await stripe.refunds.retrieve(record.stripeRefundId);
   else {
@@ -38,8 +39,9 @@ export async function reconcileRefund(refundId: string, stripe = stripeClient())
     const actor = await tx.user.findUnique({ where: { id: record.actorId }, select: { id: true, name: true } }) ?? { id: record.actorId, name: "Administrateur archivé" };
     if (changed) await audit(tx, actor, `REFUND_${state}`, `payment:${payment.id}`, record.reason, { refundId: record.id, stripeRefundId: remote!.id, amountMillimes: record.amountMillimes, source: "Stripe Test" });
     if (state === "SUCCEEDED") {
-      await tx.checkoutPayment.update({ where: { id: payment.id }, data: { status: "REFUNDED" } });
-      const invoice = await tx.clientInvoice.update({ where: { id: payment.invoiceId }, data: { status: "REFUNDED", paidMillimes: { decrement: payment.amountMillimes } }, include: { quote: { select: { requestId: true, request: { select: { clientId: true, professionalId: true } } } } } });
+      const currentPayment = await tx.checkoutPayment.findUniqueOrThrow({ where: { id: payment.id } });
+      await accountRefund(tx, currentPayment, remote!);
+      const invoice = await tx.clientInvoice.findUniqueOrThrow({ where: { id: payment.invoiceId }, include: { quote: { select: { requestId: true, request: { select: { clientId: true, professionalId: true } } } } } });
       await tx.requestEvent.create({ data: { requestId: invoice.quote.requestId, actorId: record.actorId, status: "REFUNDED", description: "Remboursement intégral du paiement Stripe Test confirmé" } });
       await tx.clientNotification.createMany({ data: [invoice.quote.request.clientId, invoice.quote.request.professionalId].map(userId => ({ userId, title: "Un paiement a été remboursé en mode Stripe Test", href: userId === invoice.quote.request.clientId ? `/dashboard/paiements/${invoice.quote.requestId}` : "/professionnel/revenus", type: "INFO" })) });
     }
@@ -50,7 +52,7 @@ export async function reconcileRefund(refundId: string, stripe = stripeClient())
 export async function requestAdminRefund(paymentId: string, reason: string, admin: { id: number; name: string }, stripe = stripeClient()) {
   const payment = await prisma.checkoutPayment.findUnique({ where: { id: paymentId } });
   if (!payment) throw new AdminActionError("Transaction introuvable.", 404);
-  if (payment.livemode || !payment.paymentIntentId || !["SUCCEEDED", "REFUNDED"].includes(payment.status)) throw new AdminActionError("Seul un paiement Stripe Test confirmé peut être remboursé.", 409);
+  if (payment.livemode || !payment.paymentIntentId || !["SUCCEEDED", "REFUNDED"].includes(payment.status)) throw new AdminActionError("Seul un paiement Stripe confirmé peut être remboursé.", 409);
   const refund = await prisma.$transaction(async tx => {
     await tx.$queryRaw`SELECT "id" FROM "ClientInvoice" WHERE "id" = ${payment.invoiceId} FOR UPDATE`;
     const existing = await tx.adminRefund.findUnique({ where: { paymentId } });

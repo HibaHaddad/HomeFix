@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "./prisma";
 import { favoriteProfessionals } from "./professional-directory";
+import { activeServiceCategories } from "./service-categories";
 
 export const requestInclude = {
   professional: { select: { id: true, name: true, businessName: true, specialty: true, profilePhotoMime: true } },
@@ -37,7 +38,8 @@ export async function clientWorkspace(clientId: number, before?: number, selecte
     prisma.booking.count({ where: { request: { clientId }, status: "CONFIRMED", startsAt: { gte: new Date() } } }),
     prisma.serviceRequest.findMany({ where: { clientId, ...(before ? { id: { lt: before } } : {}), OR: [{ review: { isNot: null } }, { status: "COMPLETED", quotes: { some: { status: "ACCEPTED", invoice: { status: "PAID", payments: { some: { status: "SUCCEEDED" } } } } } }] }, include: requestInclude, orderBy: { id: "desc" }, take: 100 }),
   ]);
-  return { requests, conversations, confirmedInterventions, reviewRequests, olderCursor: requests.length === 100 ? requests[requests.length - 1].id : null, equipment, favorites, notifications, complaints, profile, stats: { activeCount, completedCount, quoteCount, appointmentCount }, aiEnabled: Boolean(process.env.GEMINI_API_KEY) };
+  const categories = await activeServiceCategories();
+  return { categories, requests, conversations, confirmedInterventions, reviewRequests, olderCursor: requests.length === 100 ? requests[requests.length - 1].id : null, equipment, favorites, notifications, complaints, profile, stats: { activeCount, completedCount, quoteCount, appointmentCount }, aiEnabled: Boolean(process.env.GEMINI_API_KEY) };
 }
 export type Workspace = Awaited<ReturnType<typeof clientWorkspace>>;
 export type Serialized<T> = T extends Date ? string : T extends Array<infer U> ? Serialized<U>[] : T extends object ? { [K in keyof T]: Serialized<T[K]> } : T;

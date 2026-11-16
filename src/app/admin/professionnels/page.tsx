@@ -1,6 +1,7 @@
 import { getAdminProfessionalList, parseAdminProfessionalFilters } from "@/app/lib/admin-professionals";
 import ProfessionalReviewList, { type ReviewRow } from "@/components/admin/ProfessionalReviewList";
 import "./professionals.css";
+import "./validation.css";
 import { requireAdminPage } from "@/app/lib/admin-access";
 
 export default async function ProfessionalReviewPage({ searchParams }: PageProps<"/admin/professionnels">) {

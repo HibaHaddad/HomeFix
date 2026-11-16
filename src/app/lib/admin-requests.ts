@@ -1,6 +1,7 @@
 import "server-only";
 import { requireAdmin } from "@/app/lib/admin-access";
 import { prisma } from "@/app/lib/prisma";
+import { resolveServiceCategory } from "./service-categories";
 
 export type RequestStatusFilter = "ALL" | "SENT" | "QUOTED" | "PRICE_ACCEPTED" | "BOOKED" | "EN_ROUTE" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "REJECTED" | "CONVERSATION";
 export type RequestTypeFilter = "ALL" | "SERVICE" | "MESSAGE";
@@ -71,7 +72,10 @@ export async function getAdminRequestList(filters: AdminRequestFilters) {
   if (!Number.isSafeInteger(filters.page) || filters.page < 1 || filters.page > MAX_PAGE || filters.pageSize !== PAGE_SIZE) {
     throw new RangeError("Invalid admin request pagination");
   }
-  const where = requestWhere(filters);
+  const selectedCategory = filters.category ? await resolveServiceCategory(filters.category) : null;
+  const where = { ...requestWhere(selectedCategory ? { ...filters, category: "" } : filters),
+    ...(selectedCategory ? { AND: [{ OR: [{ categoryId: selectedCategory.id }, { categoryId: null, category: { in: selectedCategory.aliases, mode: "insensitive" as const } }] }] } : {}),
+  };
   const [total, pending, inProgress, completed, cancelled, rejected, urgent, matching, categories] = await Promise.all([
     prisma.serviceRequest.count({ where: serviceRequestWhere }),
     prisma.serviceRequest.count({ where: { ...serviceRequestWhere, status: { in: ["SENT", "QUOTED", "PRICE_ACCEPTED"] } } }),
@@ -81,7 +85,7 @@ export async function getAdminRequestList(filters: AdminRequestFilters) {
     prisma.serviceRequest.count({ where: { ...serviceRequestWhere, status: "REJECTED" } }),
     prisma.serviceRequest.count({ where: { ...serviceRequestWhere, urgency: "URGENT" } }),
     prisma.serviceRequest.count({ where }),
-    prisma.serviceRequest.findMany({ where: { kind: { not: "MESSAGE" } }, distinct: ["category"], orderBy: { category: "asc" }, select: { category: true } }),
+    prisma.serviceCategory.findMany({ orderBy: { name: "asc" }, select: { name: true } }),
   ]);
   const pageCount = Math.ceil(matching / PAGE_SIZE);
   const page = Math.min(filters.page, Math.max(1, pageCount));
@@ -100,7 +104,7 @@ export async function getAdminRequestList(filters: AdminRequestFilters) {
 
   return {
     requests,
-    categories: categories.map(({ category }) => category),
+    categories: categories.map(({ name }) => name),
     counts: { total, pending, inProgress, completed, cancelled, rejected, urgent },
     matching, page, pageSize: PAGE_SIZE, pageCount,
   };

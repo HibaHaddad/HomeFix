@@ -1,4 +1,6 @@
 /* Shared HomeFix palette. Scoped to the administration workspace. */
+.admin-app :is(.admin-back-link, .admin-user-back) { display: inline-flex; align-items: center; gap: 7px; }
+.admin-app :is(.admin-back-link, .admin-user-back) > svg { flex-shrink: 0; }
 .admin-app {
   --admin-green: var(--green, #167c68);
   --admin-forest: var(--forest, #164e42);

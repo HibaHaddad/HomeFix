@@ -1,11 +1,28 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AssistantError, parseSearch, safetyAdvice, rankProfessional, describeAssistantMatch, assistantMatchTier, recommendationText } from "../src/lib/assistant.ts";
-import { runAssistant } from "../src/app/lib/gemini-assistant.ts";
+import { AssistantError, parseSearch as parseCategorySearch, safetyAdvice, rankProfessional, describeAssistantMatch, assistantMatchTier, recommendationText } from "../src/lib/assistant.ts";
+import { runAssistant as runAssistantWithCatalog } from "../src/app/lib/gemini-assistant.ts";
+const catalog = ["Plomberie", "Électricité", "Chauffage", "Autres"];
+const parseSearch = value => parseCategorySearch(value, catalog);
+const runAssistant = (history, message, dependencies, context) => runAssistantWithCatalog(history, message, { ...dependencies, categories: async () => catalog }, context);
 
 process.env.GEMINI_API_KEY = "unit-test-key-never-sent";
 const final = { name: "respond", args: { message: "Qu’avez-vous observé exactement ?", analysis: { category: "Plomberie", urgency: "NORMAL", description: "Fuite signalée sous un évier." } } };
 const response = (call, finishReason = "STOP") => Response.json({ candidates: [{ finishReason, content: { role: "model", parts: [{ functionCall: call, thoughtSignature: "preserved-signature" }] } }] });
+test("Gemini tools and response validation use the current dynamic catalog", async () => {
+  const name = "Jardinage personnalisé";
+  const result = await runAssistantWithCatalog([], "Entretenir mon jardin", {
+    categories: async () => [name], search: async () => [],
+    fetch: async (_url, init) => {
+      const body = JSON.parse(init.body);
+      assert.deepEqual(body.tools[0].functionDeclarations[0].parameters.properties.category.enum, [name]);
+      return response({ ...final, args: { ...final.args, analysis: { ...final.args.analysis, category: name } } });
+    },
+  });
+  assert.equal(result.analysis.category, name);
+  await assert.rejects(runAssistantWithCatalog([], "Bonjour", { categories: async () => [name], search: async () => [], fetch: async () => response(final) }), /Analyse invalide/);
+  await assert.rejects(runAssistantWithCatalog([], "Bonjour", { categories: async () => [], search: async () => [], fetch: async () => { throw new Error("Must not call Gemini"); } }), /Aucune catégorie active/);
+});
 test("gas and electrical danger receive immediate safety guidance", () => {
   for (const message of ["Odeur de gaz dans la cuisine", "Fuite de butane", "Alarme monoxyde de carbone", "Des étincelles dans le tableau", "De l’eau sur la prise", "Odeur de brûlé"]) {
     assert.match(safetyAdvice(message), /Danger|Danger électrique/);

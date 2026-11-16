@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/app/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
+import { resolveServiceCategory } from "./service-categories";
 
 export type ProfessionalStatusFilter = "ALL" | "PENDING_VERIFICATION" | "APPROVED" | "REJECTED";
 export type ProfessionalAccountFilter = "ALL" | "ACTIVE" | "SUSPENDED";
@@ -81,7 +82,10 @@ export async function getAdminProfessionalList(filters: AdminProfessionalFilters
     throw new RangeError("Invalid admin professional pagination");
   }
 
-  const where = whereFor(filters);
+  const selectedCategory = filters.specialty ? await resolveServiceCategory(filters.specialty) : null;
+  const where = { ...whereFor(selectedCategory ? { ...filters, specialty: "" } : filters),
+    ...(selectedCategory ? { AND: [{ OR: [{ categoryId: selectedCategory.id }, { categoryId: null, specialty: { in: selectedCategory.aliases, mode: "insensitive" as const } }] }] } : {}),
+  };
   const [total, pending, approved, rejected, suspended, matching, specialties] = await Promise.all([
     prisma.user.count({ where: { role: "PROFESSIONAL" } }),
     prisma.user.count({ where: { role: "PROFESSIONAL", status: "PENDING_VERIFICATION" } }),
@@ -89,11 +93,9 @@ export async function getAdminProfessionalList(filters: AdminProfessionalFilters
     prisma.user.count({ where: { role: "PROFESSIONAL", status: "REJECTED" } }),
     prisma.user.count({ where: { role: "PROFESSIONAL", isSuspended: true } }),
     prisma.user.count({ where }),
-    prisma.user.findMany({
-      where: { role: "PROFESSIONAL", specialty: { not: null } },
-      distinct: ["specialty"],
-      orderBy: { specialty: "asc" },
-      select: { specialty: true },
+    prisma.serviceCategory.findMany({
+      orderBy: { name: "asc" },
+      select: { name: true },
     }),
   ]);
 
@@ -110,5 +112,5 @@ export async function getAdminProfessionalList(filters: AdminProfessionalFilters
     },
   });
 
-  return { professionals, specialties: specialties.flatMap((item) => item.specialty ? [item.specialty] : []), counts: { total, pending, approved, rejected, suspended }, matching, page, pageSize: PAGE_SIZE, pageCount };
+  return { professionals, specialties: specialties.map(item => item.name), counts: { total, pending, approved, rejected, suspended }, matching, page, pageSize: PAGE_SIZE, pageCount };
 }

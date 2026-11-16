@@ -1,61 +1,60 @@
+"use client";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, ClipboardList, MessageSquare, Search, ShieldAlert } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, ArrowRight, CheckCheck, ClipboardList, Clock3, Eye, Inbox, MessageSquareText, RotateCcw, Search, SlidersHorizontal } from "lucide-react";
 import type { getAdminComplaintList } from "@/app/lib/admin-complaints";
+import { complaintStatuses, complaintPriorities, complaintRoles } from "@/lib/admin-complaint-filters";
+import AdminAutoFiltersForm from "./AdminAutoFiltersForm";
+import AdminComplaintDrawer from "./AdminComplaintDrawer";
 
 type Result = Awaited<ReturnType<typeof getAdminComplaintList>>;
-const numberFormat = new Intl.NumberFormat("fr-FR");
-const dateFormat = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeZone: "Africa/Tunis" });
-const labels: Record<string, string> = { OPEN: "Ouverte", IN_PROGRESS: "En cours", RESOLVED: "Résolue", CLOSED: "Clôturée" };
-
-function label(status: string) {
-  if (!status.trim()) return "Statut vide";
-  return labels[status] ?? status.replaceAll("_", " ");
-}
-
+const number = new Intl.NumberFormat("fr-FR");
+const date = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeZone: "Africa/Tunis" });
+const text = (labels: Record<string, string>, value: string) => labels[value] ?? value;
 function pageHref(result: Result, page: number) {
   const params = new URLSearchParams();
-  if (result.filters.q) params.set("q", result.filters.q);
-  if (result.filters.status !== "ALL") params.set("status", result.filters.status);
-  if (result.filters.sort !== "newest") params.set("sort", result.filters.sort);
+  for (const [name, value] of Object.entries(result.filters)) if (name !== "page" && value && value !== "ALL") params.set(name, String(value));
   params.set("page", String(page));
-  return `/admin/reclamations?${params.toString()}`;
+  return `/admin/reclamations?${params}`;
 }
 
 export default function AdminComplaintList({ result }: { result: Result }) {
   const { complaints, statuses, stats, matching, page, pageCount, pageSize, filters } = result;
-  const hasFilters = Boolean(filters.q || filters.status !== "ALL");
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const hasFilters = Boolean(filters.q || filters.status !== "ALL" || filters.priority !== "ALL" || filters.role !== "ALL" || filters.from || filters.to);
   const cards = [
-    { label: "Réclamations au total", value: stats.total, icon: ClipboardList, tone: "blue" },
-    { label: "Ouvertes", value: stats.open, icon: ShieldAlert, tone: "amber" },
-    { label: "Avec réponse", value: stats.withResponse, icon: MessageSquare, tone: "green" },
-    { label: "Sans réponse", value: stats.withoutResponse, icon: Check, tone: "slate" },
+    { label: "Total", detail: "Toutes les réclamations", value: stats.total, icon: ClipboardList, tone: "forest" },
+    { label: "En attente", detail: "À prendre en charge", value: stats.pending, icon: Clock3, tone: "amber" },
+    { label: "En cours de traitement", detail: "Dossiers pris en charge", value: stats.inProgress, icon: MessageSquareText, tone: "blue" },
+    { label: "Résolues", detail: "Dossiers résolus et clôturés", value: stats.resolved, icon: CheckCheck, tone: "green" },
   ];
-
   return <div className="admin-content admin-complaints-page">
-    <div className="admin-page-heading"><div><div className="admin-eyebrow"><span/>SUPERVISION DE LA PLATEFORME</div><h1>Réclamations</h1><p>Consultez les signalements transmis par les clients et les réponses enregistrées.</p></div><span className="admin-total-pill">{numberFormat.format(stats.total)} réclamation{stats.total !== 1 ? "s" : ""}</span></div>
-
-    <section className="admin-complaint-stat-grid" aria-label="Statistiques des réclamations">
-      {cards.map(({ label: title, value, icon: Icon, tone }) => <article className="admin-request-stat admin-complaint-stat" key={title}><span className={`admin-request-stat-icon tone-${tone}`}><Icon size={17}/></span><span>{title}</span><strong>{numberFormat.format(value)}</strong></article>)}
-    </section>
-
-    <section className="admin-card">
-      <form className="admin-toolbar admin-complaint-filters" action="/admin/reclamations" method="get">
-        <label className="admin-search"><Search size={16} aria-hidden="true"/><input name="q" type="search" defaultValue={filters.q} maxLength={120} placeholder="Sujet, message, nom ou e-mail…" aria-label="Rechercher une réclamation"/></label>
-        <label className="admin-filter"><span>Statut réel</span><select name="status" defaultValue={filters.status}><option value="ALL">Tous les statuts</option>{statuses.map((status) => <option value={status} key={status}>{label(status)}</option>)}</select></label>
-        <label className="admin-filter"><span>Création</span><select name="sort" defaultValue={filters.sort}><option value="newest">Plus récentes</option><option value="oldest">Plus anciennes</option></select></label>
-        <button className="admin-button admin-button-primary" type="submit">Filtrer</button>
-      </form>
-
-      {complaints.length === 0 ? <div className="admin-empty"><span><ClipboardList size={21}/></span><h2>{hasFilters ? "Aucun résultat correspondant" : "Aucune réclamation enregistrée"}</h2><p>{hasFilters ? "Modifiez la recherche ou les filtres pour afficher des résultats." : "Les réclamations apparaîtront ici lorsqu’elles seront soumises."}</p></div> : <div className="admin-complaint-table-wrap"><table className="admin-table admin-complaint-table"><thead><tr><th>Réclamation</th><th>Client</th><th>Demande associée</th><th>Statut</th><th>Création</th><th/></tr></thead><tbody>{complaints.map((complaint) => <tr key={complaint.id}>
-        <td><span className="admin-complaint-subject"><strong>#{complaint.id} · {complaint.subject}</strong><small>{complaint.response ? "Réponse enregistrée" : "Sans réponse"}</small></span></td>
-        <td><span className="admin-complaint-client"><strong>{complaint.client.name}</strong><small>{complaint.client.email}</small></span></td>
-        <td>{complaint.request ? <span className="admin-complaint-request">#{complaint.request.id} · {complaint.request.title}</span> : <span className="admin-complaint-muted">Question générale</span>}</td>
-        <td><span className={`admin-status status-${complaint.status.toLowerCase().replaceAll(/[^a-z0-9_-]/g, "")}`}><i/>{label(complaint.status)}</span></td>
-        <td>{dateFormat.format(complaint.createdAt)}</td>
-        <td><Link className="admin-view-link" href={`/admin/reclamations/${complaint.id}`}>Consulter <ArrowRight size={13}/></Link></td>
+    <header className="admin-page-heading cc-page-heading"><div><div className="admin-eyebrow"><span/>RELATION & CONFIANCE</div><h1>Réclamations</h1><p>Écoutez, répondez et accompagnez chaque demande jusqu’à sa résolution.</p></div><span className="cc-total"><Inbox size={15}/>{number.format(stats.total)} réclamation{stats.total > 1 ? "s" : ""}</span></header>
+    <section className="admin-complaint-stat-grid" aria-label="Statistiques des réclamations">{cards.map(({ label, detail, value, icon: Icon, tone }) => <article className={`cc-kpi cc-tone-${tone}`} key={label}><span className="cc-kpi-icon"><Icon size={21} strokeWidth={1.8}/></span><div><span className="cc-kpi-label">{label}</span><strong>{number.format(value)}</strong><small>{detail}</small></div></article>)}</section>
+    <section className="admin-card cc-list-card">
+      <div className="cc-list-heading"><div><span className="cc-section-icon"><MessageSquareText size={17}/></span><h2>Suivi des réclamations</h2></div><span role="status">{number.format(matching)} résultat{matching > 1 ? "s" : ""}</span></div>
+      <AdminAutoFiltersForm action="/admin/reclamations" className="cc-filters">
+        <label className="cc-search"><Search size={17} aria-hidden="true"/><input name="q" type="search" defaultValue={filters.q} maxLength={120} placeholder="Référence, sujet, nom ou e-mail…" aria-label="Rechercher une réclamation"/></label>
+        <label><span>Statut</span><select name="status" defaultValue={filters.status}><option value="ALL">Tous les statuts</option>{statuses.map(status => <option value={status} key={status}>{text(complaintStatuses, status)}</option>)}</select></label>
+        <label><span>Priorité</span><select name="priority" defaultValue={filters.priority}><option value="ALL">Toutes les priorités</option>{Object.entries(complaintPriorities).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label><span>Rôle utilisateur</span><select name="role" defaultValue={filters.role}><option value="ALL">Tous les rôles</option>{Object.entries(complaintRoles).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label><span>Du</span><input name="from" type="date" defaultValue={filters.from} max={filters.to || undefined} onChange={event => event.currentTarget.form?.requestSubmit()}/></label>
+        <label><span>Au</span><input name="to" type="date" defaultValue={filters.to} min={filters.from || undefined} onChange={event => event.currentTarget.form?.requestSubmit()}/></label>
+        <label><span>Trier</span><select name="sort" defaultValue={filters.sort}><option value="newest">Plus récentes</option><option value="oldest">Plus anciennes</option></select></label>
+        {hasFilters && <Link className="cc-filter-reset" href="/admin/reclamations"><RotateCcw size={14}/>Réinitialiser</Link>}
+      </AdminAutoFiltersForm>
+      {complaints.length === 0 ? <div className="cc-empty"><span><Inbox size={30} strokeWidth={1.5}/></span><h2>{hasFilters ? "Aucune réclamation correspondante" : "Tout est calme pour le moment"}</h2><p>{hasFilters ? "Essayez un autre terme ou ajustez vos filtres pour retrouver un dossier." : "Les réclamations apparaîtront ici dès leur envoi par les utilisateurs."}</p>{hasFilters && <Link href="/admin/reclamations" className="admin-button admin-button-light"><SlidersHorizontal size={15}/>Afficher toutes les réclamations</Link>}</div> : <div className="cc-table-scroll"><table className="cc-table"><thead><tr><th>Référence</th><th>Utilisateur</th><th>Rôle</th><th>Sujet</th><th>Date</th><th>Priorité</th><th>Statut</th><th>Actions</th></tr></thead><tbody>{complaints.map(complaint => <tr key={complaint.id} onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey) setSelectedId(complaint.id); }}>
+        <td><a className="cc-reference" href={`/admin/reclamations/${complaint.id}`} onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey) { event.preventDefault(); setSelectedId(complaint.id); } }}>REC-{String(complaint.id).padStart(4, "0")}</a></td>
+        <td><div className="cc-user-cell"><span className="cc-avatar">{complaint.client.name.split(/\s+/).slice(0, 2).map(part => part[0]).join("")}</span><div><strong>{complaint.client.name}</strong><small>{complaint.client.email}</small></div></div></td>
+        <td><span className={`cc-role role-${complaint.client.role.toLowerCase()}`}>{text(complaintRoles, complaint.client.role)}</span></td>
+        <td className="cc-subject-cell"><strong title={complaint.subject}>{complaint.subject}</strong><small>{complaint.response ? "Réponse envoyée" : "Sans réponse"}</small></td>
+        <td className="cc-date-cell">{date.format(new Date(complaint.createdAt))}</td>
+        <td><span className={`cc-priority priority-${complaint.priority.toLowerCase()}`}><i/>{text(complaintPriorities, complaint.priority)}</span></td>
+        <td><span className={`cc-status status-${complaint.status.toLowerCase()}`}>{text(complaintStatuses, complaint.status)}</span></td>
+        <td><button className="cc-open-button" onClick={() => setSelectedId(complaint.id)} aria-label={`Consulter la réclamation ${complaint.subject}`}><Eye size={15}/><span>Consulter</span></button></td>
       </tr>)}</tbody></table></div>}
-
-      <footer className="admin-request-pagination"><span>{matching === 0 ? "0 résultat" : `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, matching)} sur ${matching}`}</span><div><Link aria-disabled={page <= 1} className={page <= 1 ? "is-disabled" : ""} href={pageHref(result, Math.max(1, page - 1))}><ArrowLeft size={14}/>Précédent</Link><span>Page {matching === 0 ? "—" : page} / {pageCount}</span><Link aria-disabled={page >= pageCount} className={page >= pageCount ? "is-disabled" : ""} href={pageHref(result, Math.max(1, Math.min(pageCount, page + 1)))}>Suivant<ArrowRight size={14}/></Link></div></footer>
+      {matching > 0 && <footer className="cc-pagination"><span>{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, matching)} sur {number.format(matching)} réclamation{matching > 1 ? "s" : ""}</span><nav aria-label="Pagination des réclamations"><Link aria-disabled={page <= 1} tabIndex={page <= 1 ? -1 : undefined} className={page <= 1 ? "is-disabled" : ""} href={pageHref(result, Math.max(1, page - 1))}><ArrowLeft size={14}/><span>Précédent</span></Link><span className="cc-page-number">{page} <small>/ {pageCount}</small></span><Link aria-disabled={page >= pageCount} tabIndex={page >= pageCount ? -1 : undefined} className={page >= pageCount ? "is-disabled" : ""} href={pageHref(result, Math.max(1, Math.min(pageCount, page + 1)))}><span>Suivant</span><ArrowRight size={14}/></Link></nav></footer>}
     </section>
+    {selectedId !== null && <AdminComplaintDrawer key={selectedId} complaintId={selectedId} onClose={() => setSelectedId(null)}/>}
   </div>;
 }

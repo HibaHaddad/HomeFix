@@ -4,6 +4,9 @@ import { prisma } from "@/app/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { chatServer, userRoom } from "@/app/lib/chat-events";
 import { audit } from "./admin-audit";
+import { complaintStatuses, complaintDateRange, type AdminComplaintFilters } from "@/lib/admin-complaint-filters";
+export { parseAdminComplaintFilters } from "@/lib/admin-complaint-filters";
+export type { AdminComplaintFilters } from "@/lib/admin-complaint-filters";
 
 const PAGE_SIZE = 20;
 const MAX_PAGE = 100_000;
@@ -14,28 +17,17 @@ export class AdminComplaintError extends Error {
   }
 }
 
-export type AdminComplaintFilters = { q: string; status: string; sort: "newest" | "oldest"; page: number };
-
-function first(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-export function parseAdminComplaintFilters(params: Record<string, string | string[] | undefined>): AdminComplaintFilters {
-  const rawPage = first(params.page);
-  const parsedPage = rawPage && /^\d+$/.test(rawPage) ? Number(rawPage) : 1;
-  return {
-    q: (first(params.q) ?? "").trim().slice(0, 120),
-    status: (first(params.status) ?? "ALL").trim().slice(0, 80),
-    sort: first(params.sort) === "oldest" ? "oldest" : "newest",
-    page: Number.isSafeInteger(parsedPage) && parsedPage >= 1 && parsedPage <= MAX_PAGE ? parsedPage : 1,
-  };
-}
-
 function complaintWhere(filters: AdminComplaintFilters, status: string) {
+  const reference = /^(?:REC-|#)?(\d+)$/i.exec(filters.q);
+  const referenceId = reference ? Number(reference[1]) : 0;
   return {
     ...(status !== "ALL" ? { status } : {}),
+    ...(filters.priority !== "ALL" ? { priority: filters.priority } : {}),
+    ...(filters.role !== "ALL" ? { client: { role: filters.role } } : {}),
+    ...(filters.from || filters.to ? { createdAt: complaintDateRange(filters) } : {}),
     ...(filters.q ? {
       OR: [
+        ...(Number.isSafeInteger(referenceId) && referenceId > 0 && referenceId <= 2147483647 ? [{ id: referenceId }] : []),
         { subject: { contains: filters.q, mode: "insensitive" as const } },
         { message: { contains: filters.q, mode: "insensitive" as const } },
         { client: { name: { contains: filters.q, mode: "insensitive" as const } } },
@@ -52,14 +44,14 @@ export async function getAdminComplaintList(filters: AdminComplaintFilters) {
     throw new RangeError("Invalid admin complaint pagination");
   }
 
-  const [statusGroups, total, open, withResponse, withoutResponse] = await Promise.all([
+  const [statusGroups, total, pending, inProgress, resolved] = await Promise.all([
     prisma.complaint.groupBy({ by: ["status"], orderBy: { status: "asc" } }),
     prisma.complaint.count(),
-    prisma.complaint.count({ where: { status: { in: ["OPEN", "IN_PROGRESS"] } } }),
-    prisma.complaint.count({ where: { AND: [{ response: { not: null } }, { response: { not: "" } }] } }),
-    prisma.complaint.count({ where: { OR: [{ response: null }, { response: "" }] } }),
+    prisma.complaint.count({ where: { status: "OPEN" } }),
+    prisma.complaint.count({ where: { status: "IN_PROGRESS" } }),
+    prisma.complaint.count({ where: { status: { in: ["RESOLVED", "CLOSED"] } } }),
   ]);
-  const statuses = statusGroups.map(({ status }) => status);
+  const statuses = [...new Set([...Object.keys(complaintStatuses), ...statusGroups.map(({ status }) => status)])];
   const status = filters.status === "ALL" || statuses.includes(filters.status) ? filters.status : "ALL";
   const effectiveFilters = { ...filters, status };
   const where = complaintWhere(effectiveFilters, status);
@@ -75,9 +67,10 @@ export async function getAdminComplaintList(filters: AdminComplaintFilters) {
       id: true,
       subject: true,
       status: true,
+      priority: true,
       response: true,
       createdAt: true,
-      client: { select: { name: true, email: true } },
+      client: { select: { name: true, email: true, role: true } },
       request: { select: { id: true, title: true } },
     },
   });
@@ -86,7 +79,7 @@ export async function getAdminComplaintList(filters: AdminComplaintFilters) {
     complaints,
     statuses,
     filters: effectiveFilters,
-    stats: { total, open, withResponse, withoutResponse },
+    stats: { total, pending, inProgress, resolved },
     matching,
     page,
     pageCount,
@@ -99,19 +92,25 @@ export async function getAdminComplaintDetail(id: number) {
   if ("error" in access) throw new Error("Accès administrateur requis pour consulter les réclamations.");
   if (!Number.isSafeInteger(id) || id < 1) return null;
 
-  return prisma.complaint.findUnique({
+  const complaint = await prisma.complaint.findUnique({
     where: { id },
     select: {
       id: true,
       subject: true,
       message: true,
       status: true,
+      priority: true,
       response: true,
       createdAt: true,
-      client: { select: { name: true, email: true } },
-      request: { select: { id: true, title: true, category: true, status: true, createdAt: true } },
+      updatedAt: true,
+      client: { select: { id: true, name: true, email: true, phone: true, role: true } },
+      attachments: { select: { id: true, name: true, size: true, mime: true }, orderBy: { createdAt: "asc" } },
+      request: { select: { id: true, title: true, category: true, status: true, createdAt: true, attachments: { where: { messageId: null }, select: { id: true, name: true, size: true, mime: true } } } },
     },
   });
+  if (!complaint) return null;
+  const history = await prisma.adminAuditLog.findMany({ where: { target: `complaint:${id}`, action: { in: ["COMPLAINT_RESPONSE", "COMPLAINT_STATUS", "COMPLAINT_PRIORITY"] } }, orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: { id: true, actorName: true, action: true, reason: true, details: true, createdAt: true } });
+  return { ...complaint, history };
 }
 
 export function validateAdminComplaintResponse(value: unknown) {
@@ -155,7 +154,7 @@ export async function sendAdminComplaintResponse(id: number, rawResponse: unknow
           userId: complaint.clientId,
           title: `Une réponse à votre réclamation « ${complaint.subject} » est disponible.`,
           type: "INFO",
-          href: "/dashboard/reclamations",
+          href: `/dashboard/reclamations?reclamation=${id}#reclamation-${id}`,
         },
         select: { id: true, userId: true, title: true, href: true, type: true, createdAt: true },
       })

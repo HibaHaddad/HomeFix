@@ -2,7 +2,8 @@ import "server-only";
 import { reviewContent, REVIEW_EDIT_MS } from "@/lib/payment-rules";
 import { prisma } from "./prisma";
 import type { Prisma } from "@/generated/prisma/client";
-import { amount, bookingDates, categories, coordinates, deposit, id, money, nextProfessionalStatus, text } from "@/lib/client-domain";
+import { amount, bookingDates, coordinates, deposit, id, money, nextProfessionalStatus, text } from "@/lib/client-domain";
+import { resolveServiceCategory } from "./service-categories";
 import { visibleProfessional } from "./professional-directory";
 import { availableSlot, occupiedBookingStatuses } from "./booking-flow";
 import { publishMessage, publishMessageUpdate } from "./chat-service";
@@ -10,6 +11,9 @@ import { availabilityHours, HOUR_MS, splitHours } from "@/lib/availability";
 import { bookingRangeLabel } from "@/lib/booking-message";
 import { chatServer, userRoom } from "./chat-events";
 import { interventionStatusMessages } from "@/lib/intervention-status-message";
+import { storeClientComplaint } from "./client-complaints";
+import { SupportComplaintError } from "@/lib/support-complaints";
+import { detectSanctions } from "./sanctions";
 
 export type Actor = { id: number; role: string };
 export class WorkflowError extends Error { constructor(message: string, public status = 400) { super(message); } }
@@ -18,7 +22,7 @@ export async function mutateWorkspace(actor: Actor, body: Record<string, unknown
     try { return await mutateOnce(actor, body); }
     catch (error) {
       const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
-      if (!["conversation.open", "availability.save"].includes(String(body.action)) || attempt >= 2 || !["P2034", "P2002"].includes(code)) throw error;
+      if (!["conversation.open", "availability.save", "availability.add"].includes(String(body.action)) || attempt >= 2 || !["P2034", "P2002"].includes(code)) throw error;
     }
   }
 }
@@ -93,11 +97,18 @@ async function mutateOnce(actor: Actor, body: Record<string, unknown>) {
       const slots = await tx.availabilitySlot.createManyAndReturn({ data: splitHours(dates.startsAt, dates.endsAt).map((hour) => ({ professionalId: actor.id, ...hour })) });
       return { id: slots[0].id, count: slots.length };
     }
-    if (action === "availability.save") {
+    if (action === "availability.save" || action === "availability.add") {
       professionalOnly();
       const dates = availabilityHours(body.day, body.start, body.end);
-      // Soft retirement keeps all existing booking foreign keys and snapshots.
-      await tx.availabilitySlot.updateMany({ where: { professionalId: actor.id, active: true, startsAt: { gte: dates.from, lt: dates.until } }, data: { active: false } });
+      if (action === "availability.add") {
+        const overlap = await tx.availabilitySlot.findFirst({ where: { professionalId: actor.id, active: true, startsAt: { lt: dates.endsAt }, endsAt: { gt: dates.startsAt } }, select: { id: true } });
+        if (overlap) throw new WorkflowError("Cette plage chevauche une disponibilité déjà publiée. Choisissez d’autres horaires.", 409);
+        const booking = await tx.booking.findFirst({ where: { professionalId: actor.id, status: { in: occupiedBookingStatuses }, startsAt: { lt: dates.endsAt }, endsAt: { gt: dates.startsAt } }, select: { id: true } });
+        if (booking) throw new WorkflowError("Cette plage chevauche une réservation existante.", 409);
+      } else {
+        // Soft retirement keeps all existing booking foreign keys and snapshots.
+        await tx.availabilitySlot.updateMany({ where: { professionalId: actor.id, active: true, startsAt: { gte: dates.from, lt: dates.until } }, data: { active: false } });
+      }
       await tx.availabilitySlot.createMany({ data: splitHours(dates.startsAt, dates.endsAt).map((hour) => ({ professionalId: actor.id, ...hour })) });
       return { ok: true };
     }
@@ -119,13 +130,15 @@ async function mutateOnce(actor: Actor, body: Record<string, unknown>) {
         thread = await tx.serviceRequest.findFirst({ where: { id: id(body.conversationId), clientId: actor.id, professionalId, kind: "MESSAGE", status: "CONVERSATION" } });
         if (!thread) throw new WorkflowError("Conversation introuvable.", 404);
       } else thread = await conversation(professionalId);
+      if (body.slotId === undefined || body.slotId === null) throw new WorkflowError("Sélectionnez un créneau disponible avant d’envoyer votre demande.");
       const slot = await freeSlot(professionalId, body.slotId);
       const recent = await tx.serviceRequest.count({ where: { clientId: actor.id, kind: "INTERVENTION", createdAt: { gte: new Date(Date.now() - 60000) } } });
       if (recent >= 5) throw new WorkflowError("Veuillez patienter avant une nouvelle demande.", 429);
       if (await tx.booking.findFirst({ where: { slotId: slot.id, request: { clientId: actor.id }, status: { in: ["PROPOSED", "COUNTER_PROPOSED", ...occupiedBookingStatuses] } } })) throw new WorkflowError("Vous avez déjà une demande pour ce créneau.", 409);
       const message = text(body.message, "Problème", 10, 3000);
-      const category = (categories as readonly string[]).includes(professional.specialty || "") ? professional.specialty! : "Autres";
-      const r = await tx.serviceRequest.create({ data: { clientId: actor.id, professionalId, conversationId: thread.id, kind: "INTERVENTION", title: message.slice(0, 100), message, category, urgency: "NORMAL", address: text(body.address, "Adresse", 5, 500), booking: { create: { professionalId, slotId: slot.id, startsAt: slot.startsAt, endsAt: slot.endsAt, status: "PROPOSED" } } } });
+      const category = await resolveServiceCategory(professional.specialty || "", tx);
+      if (!category?.isActive) throw new WorkflowError("Cette catégorie n’est plus disponible pour de nouvelles interventions.", 409);
+      const r = await tx.serviceRequest.create({ data: { clientId: actor.id, professionalId, conversationId: thread.id, kind: "INTERVENTION", title: message.slice(0, 100), message, category: category.name, categoryId: category.id, urgency: "NORMAL", address: text(body.address, "Adresse", 5, 500), booking: { create: { professionalId, slotId: slot.id, startsAt: slot.startsAt, endsAt: slot.endsAt, status: "PROPOSED" } } } });
       await event(r.id, "SENT", "Demande d’intervention envoyée. Créneau et devis à valider.", professionalId);
       return { id: r.id, conversationId: thread.id };
     }
@@ -152,7 +165,7 @@ async function mutateOnce(actor: Actor, body: Record<string, unknown>) {
       const amountMillimes = amount(body.amount);
       const slot = await freeSlot(r.professionalId, r.booking.slotId, r.id);
       await tx.quote.updateMany({ where: { requestId: r.id, status: { in: ["PENDING", "NEGOTIATING"] } }, data: { status: "SUPERSEDED" } });
-      const quote = await tx.quote.create({ data: { requestId: r.id, amountMillimes, details: "Prix proposé pour l’intervention", validUntil: slot.startsAt } });
+      const quote = await tx.quote.create({ data: { requestId: r.id, amountMillimes, details: "Prix proposé pour l’intervention", validUntil: +slot.startsAt > Date.now() ? slot.startsAt : slot.endsAt } });
       await tx.booking.update({ where: { requestId: r.id }, data: { status: "ACCEPTED", holdsSlot: true } });
       await tx.serviceRequest.update({ where: { id: r.id }, data: { status: "QUOTED" } });
       await event(r.id, "QUOTED", `Votre créneau est accepté : ${bookingRangeLabel(slot.startsAt, slot.endsAt)}. Prix proposé : ${money(amountMillimes)}.`, r.clientId, quote.id);
@@ -185,13 +198,13 @@ async function mutateOnce(actor: Actor, body: Record<string, unknown>) {
     } else if (["booking.propose", "booking.cancel", "booking.confirm", "booking.counter", "booking.accept", "booking.reject"].includes(action)) {
       const r = await ownedRequest();
       if (r.kind === "MESSAGE" || ["CANCELLED", "REJECTED", "COMPLETED", "EN_ROUTE", "IN_PROGRESS"].includes(r.status)) throw new WorkflowError("Cette demande ne peut plus être modifiée.", 409);
-      if (r.booking && +r.booking.startsAt <= Date.now() && !["CANCELLED", "REJECTED"].includes(r.booking.status)) throw new WorkflowError("Le créneau a commencé. Contactez l’assistance.", 409);
+      if (r.booking && +r.booking.endsAt <= Date.now() && !["CANCELLED", "REJECTED"].includes(r.booking.status)) throw new WorkflowError("Le créneau est terminé. Choisissez une autre disponibilité.", 409);
       const priceAccepted = r.quotes.some((q) => q.status === "ACCEPTED");
       if (action === "booking.reject") {
         professionalOnly();
-        if (!r.booking || !["PROPOSED", "COUNTER_PROPOSED", "ACCEPTED"].includes(r.booking.status)) throw new WorkflowError("Cette demande ne peut plus être refusée.", 409);
+        if (r.booking ? !["PROPOSED", "COUNTER_PROPOSED", "ACCEPTED"].includes(r.booking.status) : !["SENT", "QUOTED"].includes(r.status) || priceAccepted) throw new WorkflowError("Cette demande ne peut plus être refusée.", 409);
         const reason = text(body.reason, "Motif du refus", 5, 500);
-        await tx.booking.update({ where: { requestId: r.id }, data: { status: "REJECTED", reason } });
+        if (r.booking) await tx.booking.update({ where: { requestId: r.id }, data: { status: "REJECTED", reason } });
         await tx.quote.updateMany({ where: { requestId: r.id, status: { in: ["PENDING", "NEGOTIATING"] } }, data: { status: "SUPERSEDED" } });
         await tx.serviceRequest.update({ where: { id: r.id }, data: { status: "REJECTED" } });
         await event(r.id, "REJECTED", `Demande refus?e : ${reason}`, r.clientId);
@@ -249,7 +262,9 @@ async function mutateOnce(actor: Actor, body: Record<string, unknown>) {
       } else await tx.favorite.deleteMany({ where: { clientId: actor.id, professionalId } });
     } else if (action === "equipment.create") {
       clientOnly();
-      await tx.equipment.create({ data: { clientId: actor.id, name: text(body.name, "Nom", 2, 120), category: text(body.category, "Catégorie", 1, 80), brand: typeof body.brand === "string" ? body.brand.slice(0, 120) : null, notes: typeof body.notes === "string" ? body.notes.slice(0, 1000) : null } });
+      const category = await resolveServiceCategory(text(body.category, "Catégorie", 1, 80), tx);
+      if (!category?.isActive) throw new WorkflowError("Choisissez une catégorie active.");
+      await tx.equipment.create({ data: { clientId: actor.id, name: text(body.name, "Nom", 2, 120), category: category.name, categoryId: category.id, brand: typeof body.brand === "string" ? body.brand.slice(0, 120) : null, notes: typeof body.notes === "string" ? body.notes.slice(0, 1000) : null } });
     } else if (action === "reminder.create") {
       clientOnly(); const equipmentId = id(body.equipmentId);
       if (!await tx.equipment.findFirst({ where: { id: equipmentId, clientId: actor.id } })) throw new WorkflowError("Équipement introuvable.", 404);
@@ -274,9 +289,12 @@ async function mutateOnce(actor: Actor, body: Record<string, unknown>) {
       clientOnly(); await tx.clientNotification.updateMany({ where: { userId: actor.id, ...(body.notificationId ? { id: id(body.notificationId) } : {}), readAt: null }, data: { readAt: new Date() } });
     } else if (action === "complaint.create") {
       clientOnly();
-      let requestId: number | null = null;
-      if (body.requestId) { const r = await ownedRequest(); requestId = r.id; }
-      await tx.complaint.create({ data: { clientId: actor.id, requestId, subject: text(body.subject, "Objet", 5, 150), message: text(body.message, "Réclamation", 20, 3000) } });
+      try {
+        const { action: _action, ...input } = body;
+        const created = await storeClientComplaint(tx, actor.id, input);
+        notificationsToPublish.push(...created.notifications);
+        return { ok: true, id: created.complaint.id };
+      } catch (error) { if (error instanceof SupportComplaintError) throw new WorkflowError(error.message, error.status); throw error; }
     } else throw new WorkflowError("Action inconnue.");
     return { ok: true };
   }, { isolationLevel: "Serializable" as Prisma.TransactionIsolationLevel, timeout: 15000 });
@@ -284,5 +302,8 @@ async function mutateOnce(actor: Actor, body: Record<string, unknown>) {
   await Promise.all([...messagesToRefresh].map(publishMessageUpdate));
   for (const update of interventionUpdates) chatServer()?.to([userRoom(update.clientId), userRoom(update.professionalId)]).emit("intervention:updated", { requestId: update.requestId, status: update.status });
   for (const notification of notificationsToPublish) chatServer()?.to(userRoom(notification.userId)).emit("notification:new", { id: notification.id, title: notification.title, href: notification.href, type: notification.type, createdAt: notification.createdAt.toISOString() });
+  if (["intervention.status", "booking.reject", "booking.cancel", "complaint.create"].includes(action) && body.requestId) {
+    try { await detectSanctions(id(body.requestId)); } catch (error) { console.error("Sanction detection deferred", error instanceof Error ? error.name : "Unknown"); }
+  }
   return result;
 }

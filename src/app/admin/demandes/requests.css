@@ -35,7 +35,7 @@
 .admin-request-detail-heading { align-items: flex-start; }
 .admin-request-detail-heading h1 { overflow-wrap: anywhere; }
 .admin-request-badges { display: flex; align-items: center; justify-content: flex-end; gap: 7px; flex-wrap: wrap; }
-.admin-request-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); align-items: start; gap: 14px; }
+.admin-request-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); align-items: stretch; gap: 14px; }
 .admin-request-detail-card { min-width: 0; padding: 18px; }
 .admin-request-overview, .admin-request-quotes { grid-column: 1 / -1; }
 .admin-request-section-title { display: flex; align-items: center; gap: 10px; padding-bottom: 13px; border-bottom: 1px solid #edf0eb; }

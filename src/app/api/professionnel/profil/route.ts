@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getSession } from "@/app/lib/session";
 import { prisma } from "@/app/lib/prisma";
 import { hasAllowedRequestOrigin } from "@/lib/request-origin";
+import { resolveServiceCategory } from "@/app/lib/service-categories";
 
 const profileSchema = z.object({
   name: z.string().trim().min(2, "Le nom doit contenir au moins 2 caractères").max(120),
@@ -29,13 +30,15 @@ export async function PUT(request: Request) {
 
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Connexion requise." }, { status: 401 });
-  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { id: true, email: true, password: true, role: true, status: true, isSuspended: true } });
+  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { id: true, email: true, password: true, role: true, status: true, isSuspended: true, categoryId: true, specialty: true } });
   if (!user || user.role !== "PROFESSIONAL" || user.status !== "APPROVED" || user.isSuspended) return NextResponse.json({ error: "Cette action est réservée aux professionnels approuvés." }, { status: 403 });
 
   const body = await request.json().catch(() => null);
   const parsed = profileSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message || "Vérifiez les informations saisies." }, { status: 400 });
   const { currentPassword, ...profile } = parsed.data;
+  const category = await resolveServiceCategory(profile.specialty);
+  if (!category || (!category.isActive && category.id !== user.categoryId)) return NextResponse.json({ error: "Choisissez une catégorie active." }, { status: 400 });
 
   if (profile.email !== user.email) {
     if (!currentPassword || !(await bcrypt.compare(currentPassword, user.password))) {
@@ -47,7 +50,7 @@ export async function PUT(request: Request) {
 
   const result = await prisma.user.updateMany({
     where: { id: user.id, role: "PROFESSIONAL", status: "APPROVED", isSuspended: false },
-    data: { ...profile, phone: profile.phone || null, priceRange: profile.priceRange || null, description: profile.description || null },
+    data: { ...profile, specialty: category.name, categoryId: category.id, phone: profile.phone || null, priceRange: profile.priceRange || null, description: profile.description || null },
   });
   if (result.count !== 1) return NextResponse.json({ error: "Votre compte ne peut plus être modifié." }, { status: 409 });
   return NextResponse.json({ message: "Votre profil professionnel a été mis à jour." });

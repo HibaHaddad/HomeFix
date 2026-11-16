@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { ArrowUpRight, Plus, ClipboardList, CalendarDays, FileText, Wrench, House, Heart, Sparkles, Bell, ShieldCheck, Check, MapPin, Clock3, Star, CircleHelp, CreditCard, Download, ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { WorkspaceData } from "@/app/lib/client-workspace";
-import { categories, dateLabel, money, statusLabels } from "@/lib/client-domain";
+import { dateLabel, money, statusLabels } from "@/lib/client-domain";
 import { requestsForTracking } from "@/lib/request-list";
 import { reservationStatus } from "@/lib/reservation-status";
 import WorkspaceForm from "./WorkspaceForm";
@@ -86,6 +86,7 @@ function Reservations({ requests }: { requests: RequestItem[] }) {
     </dialog>{!bookings.length && <Empty icon={CalendarDays} title="Votre prochain rendez-vous commence chez un pro." detail="Choisissez une disponibilité depuis son profil ou proposez une intervention dans votre conversation." href="/dashboard/professionnels" label="Trouver un professionnel"/>}</>;
 }
 export default function ClientWorkspace({ section = "dashboard", data, selected }: { section?: string; data: WorkspaceData; selected?: number }) {
+  const categories = data.categories.map(category => category.name);
   if (section === "dashboard") return <Dashboard data={data}/>;
   const info = sections[section];
   const requests = data.requests.filter((r) => r.kind !== "MESSAGE");

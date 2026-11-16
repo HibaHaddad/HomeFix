@@ -8,6 +8,7 @@ import {
   Clock3, FolderKanban, MessageSquareWarning, Users, Star, UserRound, CalendarDays,
 } from "lucide-react";
 import type { DashboardPeriod, getAdminDashboardData } from "@/app/lib/admin-dashboard";
+import type { DashboardPreferences } from "@/lib/admin-dashboard-preferences";
 import AdminOverviewHero from "./AdminOverviewHero";
 
 type DashboardData = Awaited<ReturnType<typeof getAdminDashboardData>>;
@@ -119,24 +120,27 @@ function StatusChart({ statuses }: { statuses: DashboardData["requestStatuses"] 
 
 type ActivityTab = "users" | "professionals" | "requests" | "complaints";
 
-export default function AdminDashboard({ data }: { data: DashboardData }) {
+export default function AdminDashboard({ data, preferences }: { data: DashboardData; preferences: DashboardPreferences }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ActivityTab>("users");
   const period = data.period;
+  const visibleKpis = new Set<string>(preferences.kpis);
+  const visibleWidgets = new Set(preferences.widgets);
+  const hasCharts = preferences.widgets.some(id => ["signups", "completed", "categories", "statuses"].includes(id));
   const metrics = [
-    { label: "Utilisateurs au total", value: data.kpis.totalUsers, detail: "Tous les comptes", icon: Users, tone: "forest" },
-    { label: "Clients", value: data.kpis.totalClients, detail: "Comptes clients", icon: UserRound, tone: "sage" },
-    { label: "Prestataires", value: data.kpis.totalProfessionals, detail: "Tous les statuts", icon: BriefcaseBusiness, tone: "green" },
-    { label: "À vérifier", value: data.kpis.pendingProfessionals, detail: "Prestataires en attente", icon: Clock3, tone: "peach" },
-    { label: "Prestataires approuvés", value: data.kpis.approvedProfessionals, detail: "Profils validés", icon: CheckCircle2, tone: "green" },
-    { label: "Demandes", value: data.kpis.totalRequests, detail: "Total des interventions", icon: ClipboardList, tone: "forest" },
-    { label: "Terminées", value: data.kpis.completedRequests, detail: "Demandes terminées", icon: CheckCircle2, tone: "sage" },
-    { label: "Réclamations à traiter", value: data.kpis.openComplaints, detail: "Ouvertes et en cours", icon: MessageSquareWarning, tone: "rose" },
-    { label: "Avis", value: data.kpis.totalReviews, detail: "Tous les avis reçus", icon: Star, tone: "peach" },
-    { label: "Volume encaissé · Test", value: data.kpis.grossTnd, detail: "Référence TND · Sans débit réel", icon: CheckCircle2, tone: "forest" },
-    { label: "Volume net · Test", value: data.kpis.netTnd, detail: "TND · Après remboursements", icon: CheckCircle2, tone: "green" },
-    { label: "Signalements ouverts", value: data.kpis.openReports, detail: "Avis à examiner", icon: Star, tone: "rose" },
-  ];
+    { id: "totalUsers", label: "Utilisateurs au total", value: data.kpis.totalUsers, detail: "Tous les comptes", icon: Users, tone: "forest" },
+    { id: "totalClients", label: "Clients", value: data.kpis.totalClients, detail: "Comptes clients", icon: UserRound, tone: "sage" },
+    { id: "totalProfessionals", label: "Prestataires", value: data.kpis.totalProfessionals, detail: "Tous les statuts", icon: BriefcaseBusiness, tone: "green" },
+    { id: "pendingProfessionals", label: "À vérifier", value: data.kpis.pendingProfessionals, detail: "Prestataires en attente", icon: Clock3, tone: "peach" },
+    { id: "approvedProfessionals", label: "Prestataires approuvés", value: data.kpis.approvedProfessionals, detail: "Profils validés", icon: CheckCircle2, tone: "green" },
+    { id: "totalRequests", label: "Demandes", value: data.kpis.totalRequests, detail: "Total des interventions", icon: ClipboardList, tone: "forest" },
+    { id: "completedRequests", label: "Terminées", value: data.kpis.completedRequests, detail: "Demandes terminées", icon: CheckCircle2, tone: "sage" },
+    { id: "openComplaints", label: "Réclamations à traiter", value: data.kpis.openComplaints, detail: "Ouvertes et en cours", icon: MessageSquareWarning, tone: "rose" },
+    { id: "totalReviews", label: "Avis", value: data.kpis.totalReviews, detail: "Tous les avis reçus", icon: Star, tone: "peach" },
+    { id: "grossTnd", label: "Volume encaissé · Test", value: data.kpis.grossTnd, detail: "Référence TND · Sans débit réel", icon: CheckCircle2, tone: "forest" },
+    { id: "netTnd", label: "Revenu HomeFix TN", value: data.kpis.netTnd, detail: "Commissions après remboursements · TND", icon: CheckCircle2, tone: "green" },
+    { id: "openReports", label: "Signalements ouverts", value: data.kpis.openReports, detail: "Avis à examiner", icon: Star, tone: "rose" },
+  ].filter(metric => visibleKpis.has(metric.id));
 
   const tabs: { id: ActivityTab; label: string; count: number }[] = [
     { id: "users", label: "Utilisateurs", count: data.latestUsers.length },
@@ -146,34 +150,34 @@ export default function AdminDashboard({ data }: { data: DashboardData }) {
   ];
 
   return <div className="admin-content admin-dashboard">
-    <AdminOverviewHero pending={data.kpis.pendingProfessionals} complaints={data.kpis.openComplaints} reports={data.kpis.openReports}/>
+    <AdminOverviewHero pending={visibleKpis.has("pendingProfessionals") ? data.kpis.pendingProfessionals : undefined} complaints={visibleKpis.has("openComplaints") ? data.kpis.openComplaints : undefined} reports={visibleKpis.has("openReports") ? data.kpis.openReports : undefined}/>
     <div className="admin-page-heading admin-dashboard-heading">
       <div><div className="admin-eyebrow"><span/>ESPACE ADMINISTRATEUR</div><h2>Vue générale</h2><p>Suivez l’activité de HomeFix TN et les indicateurs de la plateforme.</p></div>
-      <label className="admin-period-control"><span>Période des graphiques</span><select value={period} onChange={(event) => router.push(`/admin?period=${event.target.value}`)} aria-label="Période des graphiques">{Object.entries(periodLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+      <div className="admin-dashboard-controls"><Link href="/admin/parametres#personnaliser-dashboard" className="admin-button admin-button-light">Personnaliser</Link>{hasCharts && <label className="admin-period-control"><span>Période des graphiques</span><select value={period} onChange={(event) => router.push(`/admin?period=${event.target.value}`)} aria-label="Période des graphiques">{Object.entries(periodLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}</div>
     </div>
 
-    <section className="admin-kpi-grid" aria-label="Indicateurs globaux">
-      {metrics.map(({ label, value, detail, icon: Icon, tone }) => <article className="admin-kpi-card" key={label}>
+    {metrics.length > 0 && <><section className="admin-kpi-grid" aria-label="Indicateurs globaux">
+      {metrics.map(({ id, label, value, detail, icon: Icon, tone }) => <article className="admin-kpi-card" key={id}>
         <div className={`admin-kpi-icon tone-${tone}`}><Icon size={19} strokeWidth={1.8}/></div>
         <span className="admin-kpi-label">{label}</span>
         <strong className="admin-kpi-value">{numberFormat.format(value)}</strong>
         <span className="admin-kpi-detail">{detail}</span>
       </article>)}
     </section>
-    <p className="admin-kpi-note"><ArrowDownRight size={14}/> Les indicateurs affichent les totaux actuels ; la période filtre les graphiques ci-dessous.</p>
-    {data.latestAudit.length > 0 && <section className="aw-card"><div className="admin-section-heading"><h2>Dernières actions Admin</h2><Link href="/admin/activites" className="admin-row-link">Voir le journal <ArrowRight size={14}/></Link></div>{data.latestAudit.map(event => <div className="aw-message" key={event.id}><header><strong>{event.actorName} · {event.action}</strong><time>{formatDate(event.createdAt)}</time></header><small>{event.target}</small></div>)}</section>}
+    <p className="admin-kpi-note"><ArrowDownRight size={14}/> Les indicateurs affichent les totaux actuels{hasCharts ? " ; la période filtre les graphiques ci-dessous." : "."}</p></>}
+    {visibleWidgets.has("latestAudit") && <section className="aw-card admin-dashboard-section"><div className="admin-section-heading"><h2>Dernières actions Admin</h2><Link href="/admin/activites" className="admin-row-link">Voir le journal <ArrowRight size={14}/></Link></div>{data.latestAudit.map(event => <div className="aw-message" key={event.id}><header><strong>{event.actorName} · {event.action}</strong><time>{formatDate(event.createdAt)}</time></header><small>{event.target}</small></div>)}{data.latestAudit.length === 0 && <EmptyActivity message="Aucune action Admin enregistrée."/>}</section>}
 
-    <section className="admin-dashboard-section">
+    {hasCharts && <section className="admin-dashboard-section">
       <div className="admin-section-heading"><div><span className="admin-section-kicker">ANALYSE</span><h2>Activité de la plateforme</h2></div><span className="admin-period-chip">{periodLabels[period]}</span></div>
       <div className="admin-chart-grid">
-        <LineChart title="Évolution des inscriptions" points={data.signups} period={period} color="#167c68" emptyLabel="Aucune inscription sur cette période." />
-        <LineChart title="Interventions terminées" points={data.completed} period={period} color="#75a98f" emptyLabel="Aucune intervention terminée sur cette période." />
-        <CategoryChart categories={data.categories}/>
-        <StatusChart statuses={data.requestStatuses}/>
+        {visibleWidgets.has("signups") && <LineChart title="Évolution des inscriptions" points={data.signups} period={period} color="#167c68" emptyLabel="Aucune inscription sur cette période." />}
+        {visibleWidgets.has("completed") && <LineChart title="Interventions terminées" points={data.completed} period={period} color="#75a98f" emptyLabel="Aucune intervention terminée sur cette période." />}
+        {visibleWidgets.has("categories") && <CategoryChart categories={data.categories}/>}
+        {visibleWidgets.has("statuses") && <StatusChart statuses={data.requestStatuses}/>}
       </div>
-    </section>
+    </section>}
 
-    <section className="admin-dashboard-section admin-activity-section">
+    {visibleWidgets.has("latestOperations") && <section className="admin-dashboard-section admin-activity-section">
       <div className="admin-section-heading"><div><span className="admin-section-kicker">ACTIVITÉ RÉCENTE</span><h2>Dernières opérations</h2></div></div>
       <div className="admin-card admin-activity-card">
         <div className="admin-activity-tabs" role="tablist" aria-label="Activités récentes">
@@ -184,9 +188,9 @@ export default function AdminDashboard({ data }: { data: DashboardData }) {
         {activeTab === "requests" && <div className="admin-activity-table-wrap"><table className="admin-activity-table"><thead><tr><th>Demande</th><th>Catégorie</th><th>Client</th><th>Statut</th><th>Créée le</th></tr></thead><tbody>{data.latestRequests.map((request) => <tr key={request.id}><td><strong>{request.title}</strong></td><td>{request.category}</td><td>{request.client.name}</td><td><span className="admin-mini-badge">{labelStatus(request.status)}</span></td><td>{formatDate(request.createdAt)}</td></tr>)}</tbody></table>{data.latestRequests.length === 0 && <EmptyActivity message="Aucune demande enregistrée."/>}</div>}
         {activeTab === "complaints" && <div className="admin-activity-table-wrap"><table className="admin-activity-table"><thead><tr><th>Réclamation</th><th>Utilisateur</th><th>Statut</th><th>Créée le</th></tr></thead><tbody>{data.latestComplaints.map((complaint) => <tr key={complaint.id}><td><strong>{complaint.subject}</strong></td><td>{complaint.client.name}</td><td><span className="admin-mini-badge">{labelStatus(complaint.status)}</span></td><td>{formatDate(complaint.createdAt)}</td></tr>)}</tbody></table>{data.latestComplaints.length === 0 && <EmptyActivity message="Aucune réclamation enregistrée."/>}</div>}
       </div>
-    </section>
+    </section>}
 
-    <section className="admin-dashboard-section">
+    {visibleWidgets.has("quickLinks") && <section className="admin-dashboard-section">
       <div className="admin-section-heading"><div><span className="admin-section-kicker">ACCÈS RAPIDE</span><h2>Gestion de la plateforme</h2></div></div>
       <div className="admin-quick-links">
         <QuickLink label="Prestataires" href="/admin/professionnels" icon={<BriefcaseBusiness size={18}/>} available/>
@@ -195,7 +199,8 @@ export default function AdminDashboard({ data }: { data: DashboardData }) {
         <QuickLink label="Réclamations" href="/admin/reclamations" icon={<MessageSquareWarning size={18}/>} available/>
         <QuickLink label="Catégories" href="/admin/categories" icon={<FolderKanban size={18}/>} available/>
       </div>
-    </section>
+    </section>}
+    {metrics.length === 0 && visibleWidgets.size === 0 && <section className="aw-card admin-dashboard-empty"><h2>Un dashboard à votre image</h2><p>Aucun indicateur ni widget sélectionné. Choisissez les informations utiles à votre quotidien.</p><Link href="/admin/parametres#personnaliser-dashboard" className="admin-button admin-button-primary">Personnaliser mon dashboard</Link></section>}
   </div>;
 }
 

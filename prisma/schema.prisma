@@ -13,7 +13,25 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model ServiceCategory {
+  id             Int @id @default(autoincrement())
+  name           String
+  normalizedName String @unique
+  description    String @default("")
+  icon           String @default("wrench")
+  isActive       Boolean @default(true)
+  aliases        String[] @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
+  professionals  User[]
+  requests       ServiceRequest[]
+  equipment      Equipment[]
+  @@index([isActive, name])
+}
+
 model User {
+  categoryId        Int?
+  serviceCategory   ServiceCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   id                Int      @id @default(autoincrement())
   email             String   @unique
   name              String
@@ -59,8 +77,10 @@ model User {
   createdAt         DateTime @default(now())
   assistantConversations AssistantConversation[]
   reviewReports ReviewReport[]
+  sanctions ProfessionalSanction[]
 
   @@index([role, status, isPublic, createdAt])
+  @@index([categoryId])
 }
 
 model AssistantConversation {
@@ -107,6 +127,9 @@ model ProfessionalReview {
 }
 
 model ServiceRequest {
+  sanctions ProfessionalSanction[]
+  categoryId     Int?
+  serviceCategory ServiceCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   id             Int @id @default(autoincrement())
   clientId       Int
   professionalId Int
@@ -140,6 +163,61 @@ model ServiceRequest {
   @@index([professionalId, createdAt])
   @@index([clientId, createdAt])
   @@index([conversationId])
+  @@index([categoryId])
+}
+
+model SanctionRule {
+  id String @id
+  enabled Boolean @default(true)
+  thresholdMinutes Int @default(0)
+  amountMillimes Int @default(0)
+  ratingHundredths Int @default(0)
+  updatedAt DateTime @default(now()) @updatedAt
+  sanctions ProfessionalSanction[]
+}
+
+model ProfessionalSanction {
+  id String @id @default(uuid())
+  requestId Int
+  professionalId Int
+  ruleId String
+  family String
+  status String @default("PENDING")
+  reason String
+  evidence Json
+  incidentAt DateTime
+  amountMillimes Int
+  ratingHundredths Int
+  createdAt DateTime @default(now())
+  appliedAt DateTime?
+  decidedAt DateTime?
+  decidedById Int?
+  decisionReason String?
+  revokedAt DateTime?
+  appealStatus String @default("NONE")
+  appealText String?
+  appealAt DateTime?
+  appealResolution String?
+  request ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  professional User @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  rule SanctionRule @relation(fields: [ruleId], references: [id], onDelete: Restrict)
+  history SanctionHistory[]
+  @@unique([requestId, family])
+  @@index([status, createdAt])
+  @@index([professionalId, status])
+  @@index([appealStatus, appealAt])
+}
+
+model SanctionHistory {
+  id Int @id @default(autoincrement())
+  sanctionId String
+  actorId Int
+  actorName String
+  action String
+  reason String
+  createdAt DateTime @default(now())
+  sanction ProfessionalSanction @relation(fields: [sanctionId], references: [id], onDelete: Cascade)
+  @@index([sanctionId, createdAt])
 }
 
 model ChatMessage {
@@ -263,7 +341,36 @@ model CheckoutPayment {
   updatedAt DateTime @default(now()) @updatedAt
   invoice ClientInvoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
   refund AdminRefund?
+  allocation PaymentAllocation?
+  accountingRefunds PaymentAccountingRefund[]
   @@index([invoiceId, createdAt])
+}
+
+model PaymentAllocation {
+  paymentId String @id
+  professionalId Int
+  commissionBps Int
+  grossMillimes Int
+  commissionMillimes Int
+  professionalMillimes Int
+  refundedMillimes Int @default(0)
+  refundedCommissionMillimes Int @default(0)
+  refundedProfessionalMillimes Int @default(0)
+  historical Boolean @default(false)
+  createdAt DateTime @default(now())
+  payment CheckoutPayment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  @@index([professionalId, createdAt])
+}
+
+model PaymentAccountingRefund {
+  stripeRefundId String @id
+  paymentId String
+  stripeAmount Int
+  status String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  payment CheckoutPayment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  @@index([paymentId, status])
 }
 
 model AdminAuditLog {
@@ -320,6 +427,8 @@ model StripeWebhookEvent {
 }
 
 model Equipment {
+  categoryId Int?
+  serviceCategory ServiceCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   id Int @id @default(autoincrement())
   clientId Int
   name String
@@ -331,6 +440,7 @@ model Equipment {
   requests ServiceRequest[]
   reminders MaintenanceReminder[]
   @@index([clientId])
+  @@index([categoryId])
 }
 
 model MaintenanceReminder {
@@ -373,9 +483,25 @@ model Complaint {
   subject String
   message String
   status String @default("OPEN")
+  priority String @default("NORMAL")
   response String?
   createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  attachments ComplaintAttachment[]
   client User @relation(fields: [clientId], references: [id], onDelete: Cascade)
   request ServiceRequest? @relation(fields: [requestId], references: [id])
   @@index([clientId, createdAt])
+  @@index([status, priority, createdAt])
+}
+
+model ComplaintAttachment {
+  id Int @id @default(autoincrement())
+  complaintId Int
+  name String
+  mime String
+  size Int
+  data Bytes
+  createdAt DateTime @default(now())
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  @@index([complaintId])
 }

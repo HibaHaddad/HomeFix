@@ -29,4 +29,44 @@
 .footer button[type=submit] { background: #167c68; border-color: #167c68; color: #fff; }
 .footer button:disabled { opacity: .5; cursor: not-allowed; }
 .panel input:focus-visible, .panel select:focus-visible, .panel textarea:focus-visible, .panel button:focus-visible { outline: 2px solid #167c68; outline-offset: 3px; }
+.formFields { border: 0; padding: 0; margin: 0; min-width: 0; }
+.selectionNote { color: #748675; font-size: 10px; line-height: 1.7; }
+.fields label > span > svg { vertical-align: middle; margin-right: 3px; }
+.fields input[type=file] { padding: 12px; font-size: 11px; }
+.fields input[type=file]::file-selector-button { padding: 7px 10px; margin-right: 10px; border: 1px solid #dce6d9; border-radius: 7px; color: #407356; background: #edf5e9; font: inherit; cursor: pointer; }
+.error, .success { padding: 13px 16px; margin: 16px 0 0; border-radius: 10px; font-size: 12px; line-height: 1.7; }
+.error { border: 1px solid #edcfc9; background: #fff4f1; color: #a45b50; }
+.success { display: flex; align-items: flex-start; gap: 9px; border: 1px solid #cfe3d2; background: #eff8ec; color: #428050; }
+.success svg { flex-shrink: 0; margin-top: 2px; }
+.history { margin-top: 24px; }
+.historyList { display: grid; gap: 16px; }
+.historyItem { padding: 19px; border: 1px solid #e1e9dc; border-radius: 13px; background: #fdfefa; scroll-margin-top: 90px; }
+.historyItem:target { border-color: #73a384; box-shadow: 0 0 0 3px #e1efdc; }
+.historyItem > header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+.historyItem h3 { margin: 0; color: #315c3e; font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
+.status { padding: 5px 8px; border-radius: 7px; background: #eef3e9; color: #71846b; font-size: 10px; font-weight: 650; white-space: nowrap; }
+.status_OPEN { color: #997227; background: #fff2d9; }
+.status_IN_PROGRESS { color: #5076a3; background: #eaf2fc; }
+.status_RESOLVED { color: #3f8054; background: #e5f4e6; }
+.status_CLOSED { color: #738469; background: #edf1e8; }
+.historyDate { display: inline-flex; align-items: center; gap: 5px; color: #82937c; font-size: 10px; margin-top: 9px; }
+.relatedIntervention { padding: 10px 12px; border-radius: 8px; background: #f1f6eb; color: #7a9070; font-size: 11px; line-height: 1.7; overflow-wrap: anywhere; }
+.relatedIntervention strong { color: #5a7e4f; font-weight: 600; }
+.historyItem details { margin-top: 13px; }
+.historyItem summary { display: inline-flex; align-items: center; gap: 7px; color: #67885d; cursor: pointer; font-size: 11px; font-weight: 600; }
+.historyItem details[open] summary svg { transform: rotate(180deg); }
+.originalMessage { font-size: 12px; line-height: 1.8; color: #6c8066; white-space: pre-wrap; overflow-wrap: anywhere; }
+.attachedFiles { padding: 0; margin: 12px 0 0; list-style: none; display: grid; gap: 8px; }
+.attachedFiles a { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: #688b58; text-decoration: none; overflow-wrap: anywhere; }
+.attachedFiles small { color: #8a9b80; }
+.adminReply { margin-top: 16px; padding: 15px; border: 1px solid #d7e6d2; border-radius: 11px; background: #eff7eb; }
+.adminReply strong { display: flex; align-items: center; gap: 6px; color: #4f8549; font-size: 11px; font-weight: 650; }
+.adminReply p { margin: 10px 0 0; color: #5a7b51; font-size: 12px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.waitingReply { margin: 14px 0 0; color: #8b9c80; font-size: 11px; line-height: 1.7; }
+.emptyHistory { display: grid; justify-items: center; padding: 25px 15px; gap: 9px; color: #8da07f; font-size: 12px; text-align: center; }
+.loadMore { display: block; margin: 20px auto 0; padding: 10px 15px; border: 1px solid #dbe6d5; border-radius: 9px; color: #5a8150; background: #f7fbf2; font: inherit; font-size: 11px; cursor: pointer; }
+.loadMore:disabled { opacity: .6; cursor: wait; }
+.spinner { animation: support-spin 1s linear infinite; }
+@keyframes support-spin { to { transform: rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { .spinner { animation: none; } }
 @media(max-width: 600px) { .panel { padding: 16px; } .fields, .type { grid-template-columns: 1fr; } .fields { gap: 13px; } .footer { align-items: flex-start; flex-direction: column; } .footer > div { width: 100%; } .footer button[type=submit] { flex: 1; } .sendNote { text-align: left; } }

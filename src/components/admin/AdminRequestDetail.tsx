@@ -30,13 +30,12 @@ export default function AdminRequestDetail({ request }: { request: RequestDetail
 
   return <div className="admin-content admin-request-detail-page">
     <Link href="/admin/demandes" className="admin-back-link"><ArrowLeft size={14}/>Retour aux demandes</Link>
-    <Link href={`/admin/messagerie/${request.conversationId ?? request.id}`} prefetch={false} className="admin-back-link">Consulter les échanges · Accès journalisé</Link>
 
-    <div className="admin-page-heading admin-request-detail-heading"><div><div className="admin-eyebrow"><span/>SUPERVISION · #{request.id}</div><h1>{request.title}</h1><p>{request.category} · Créée le {dateFormat.format(request.createdAt)}</p></div><div className="admin-request-badges"><span className={`admin-request-kind ${isMessage ? "is-message" : "is-service"}`}>{kindLabel}</span><span className={`admin-status status-${request.status.toLowerCase()}`}><i/>{label(request.status)}</span>{request.urgency === "URGENT" && <span className="admin-request-urgency urgency-urgent">Urgente</span>}</div></div>
+    <div className="admin-page-heading admin-request-detail-heading"><div><div className="admin-eyebrow"><span/>SUPERVISION</div><h1>{request.title}</h1><p>{request.category} · Créée le {dateFormat.format(request.createdAt)}</p></div><div className="admin-request-badges"><span className={`admin-request-kind ${isMessage ? "is-message" : "is-service"}`}>{kindLabel}</span><span className={`admin-status status-${request.status.toLowerCase()}`}><i/>{label(request.status)}</span>{request.urgency === "URGENT" && <span className="admin-request-urgency urgency-urgent">Urgente</span>}</div></div>
 
     <section className="admin-request-detail-grid">
       <article className="admin-card admin-request-detail-card admin-request-overview">
-        <header className="admin-request-section-title"><span><ClipboardList size={17}/></span><div><h2>Informations de la demande</h2><p>Contenu transmis et statut courant</p></div></header>
+        <header className="admin-request-section-title"><span><ClipboardList size={17}/></span><div><h2>Informations de la demande</h2></div></header>
         <dl className="admin-request-info-grid">
           <Info title="Type" value={kindLabel}/><Info title="Catégorie" value={request.category}/>
           <Info title="Urgence" value={urgencyLabels[request.urgency] ?? request.urgency}/><Info title="Statut actuel" value={label(request.status)}/>
@@ -48,7 +47,7 @@ export default function AdminRequestDetail({ request }: { request: RequestDetail
       </article>
 
       <article className="admin-card admin-request-detail-card">
-        <header className="admin-request-section-title"><span><UserRound size={17}/></span><div><h2>Personnes associées</h2><p>Coordonnées disponibles dans le dossier</p></div></header>
+        <header className="admin-request-section-title"><span><UserRound size={17}/></span><div><h2>Personnes associées</h2></div></header>
         <div className="admin-request-party"><strong>Client</strong><dl><Info title="Nom" value={request.client.name}/><Info title="E-mail" value={request.client.email}/><Info title="Téléphone" value={request.client.phone}/></dl></div>
         <div className="admin-request-party"><strong>Professionnel</strong><dl><Info title="Nom" value={request.professional.businessName || request.professional.name}/><Info title="Contact" value={request.professional.name}/><Info title="E-mail" value={request.professional.email}/><Info title="Téléphone" value={request.professional.phone}/></dl></div>
       </article>
@@ -59,7 +58,7 @@ export default function AdminRequestDetail({ request }: { request: RequestDetail
       </article>}
 
       {request.booking && <article className="admin-card admin-request-detail-card">
-        <header className="admin-request-section-title"><span><CalendarClock size={17}/></span><div><h2>Réservation associée</h2><p>Informations enregistrées pour le créneau</p></div></header>
+        <header className="admin-request-section-title"><span><CalendarClock size={17}/></span><div><h2>Réservation associée</h2></div></header>
         <dl className="admin-request-info-grid"><Info title="Statut" value={label(request.booking.status)}/><Info title="Début" value={dateTimeFormat.format(request.booking.startsAt)}/><Info title="Fin" value={dateTimeFormat.format(request.booking.endsAt)}/><Info title="Créneau retenu" value={request.booking.holdsSlot ? "Oui" : "Non"}/><Info title="Motif" value={request.booking.reason}/></dl>
       </article>}
 
@@ -70,9 +69,9 @@ export default function AdminRequestDetail({ request }: { request: RequestDetail
     </section>
 
     <section className="admin-card admin-request-timeline-card">
-      <header className="admin-request-section-title"><span><MapPin size={17}/></span><div><h2>Historique enregistré</h2><p>Événements présents dans RequestEvent</p></div></header>
-      {events.length === 0 ? <p className="admin-request-no-events">Aucun événement historique n’est enregistré pour cette demande.</p> : <ol className="admin-request-timeline">{events.map((event) => <li key={event.id}><span className="admin-request-timeline-dot"/><article><div className="admin-request-event-head"><strong>{label(event.status)}</strong><time dateTime={event.createdAt.toISOString()}>{dateTimeFormat.format(event.createdAt)}</time></div><p>{event.description}</p><small>{event.actor ? `${event.actor.name} · ${event.actor.role}` : "Auteur indisponible"}</small></article></li>)}</ol>}
+      <header className="admin-request-section-title"><span><MapPin size={17}/></span><div><h2>Historique enregistré</h2></div></header>
+      {events.length === 0 ? <p className="admin-request-no-events">Aucun événement historique n’est enregistré pour cette demande.</p> : <ol className="admin-request-timeline">{events.map((event) => <li key={event.id}><span className="admin-request-timeline-dot"/><article><div className="admin-request-event-head"><strong>{label(event.status)}</strong><time dateTime={event.createdAt.toISOString()}>{dateTimeFormat.format(event.createdAt)}</time></div><p>{event.status === "PAID" ? "Paiement confirmé avec succès" : event.description}</p><small>{event.actor ? `${event.actor.name} · ${event.actor.role}` : "Auteur indisponible"}</small></article></li>)}</ol>}
     </section>
-    <p className="admin-request-readonly-note">Cette fiche est en consultation seule. Les statuts, devis et réservations restent gérés dans les parcours client et professionnel.</p>
+
   </div>;
 }

@@ -6,6 +6,7 @@ export default function nextConfig(phase: string): NextConfig {
     reactCompiler: true,
     outputFileTracingIncludes: {
       "/api/client/factures/*/pdf": ["./assets/fonts/*.ttf"],
+      "/api/professionnel/paiements/*/recu": ["./assets/fonts/*.ttf"],
     },
     // A production build must never clean files used by the running dev server.
     distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",

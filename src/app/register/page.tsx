@@ -2,10 +2,13 @@ import Link from "next/link";
 import HomeFixBrand from "@/components/HomeFixBrand";
 import AuthForm from "@/components/AuthForm";
 import "../auth-theme.css";
+import { activeServiceCategories } from "@/app/lib/service-categories";
+export const dynamic = "force-dynamic";
 
 
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  const categories = await activeServiceCategories();
   return (
     <main className="register-page">
       <div className="register-shell">
@@ -22,7 +25,7 @@ export default function RegisterPage() {
             </div>
             <section className="register-card" aria-labelledby="register-heading">
               <div className="register-card-heading"><div><h2 id="register-heading">Créer votre compte</h2><p>Quelques étapes simples pour commencer.</p></div><span className="register-card-sparkle" aria-hidden="true">✳</span></div>
-              <AuthForm mode="register" />
+              <AuthForm mode="register" categories={categories} />
             </section>
           </div>
           <aside className="register-aside" aria-label="Les avantages HomeFix">

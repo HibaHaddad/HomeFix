@@ -1,3 +1,5 @@
+import { adjustedRating } from "@/lib/sanctions";
+import { ratingPenalty } from "@/app/lib/sanctions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/app/lib/prisma";
@@ -26,13 +28,14 @@ export default async function ProfessionalProfilePage({ params, searchParams }: 
     prisma.professionalReview.findMany({ where: { professionalId: id, published: true }, select: { id: true, rating: true, comment: true, createdAt: true }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 20 }),
     prisma.professionalReview.aggregate({ where: { professionalId: id, published: true }, _avg: { rating: true }, _count: true }),
   ]);
+  const publicRating = adjustedRating(summary._avg.rating, await ratingPenalty(p.id));
   const profile = await prisma.user.findUnique({ where: { id: client.id }, select: { address: true } });
   const search = await searchParams;
   const back = typeof search.retour === "string" && /^\/dashboard\/professionnels(?:\?|$)/.test(search.retour) ? search.retour : "/dashboard/professionnels";
   const price = p.priceMin !== null ? p.priceMax !== null && p.priceMax !== p.priceMin ? `${p.priceMin}–${p.priceMax} TND` : `Dès ${p.priceMin} TND` : p.priceRange || "Sur devis";
   return <>
     <Link className="client-back" href={back}><Icon name="chevron-left" size={17}/> Retour aux professionnels</Link>
-    <section className="client-profile-hero"><ProfessionalAvatar id={p.id} name={p.name} hasPhoto={!!p.profilePhotoMime}/><div><span className="eyebrow">{p.specialty || "SERVICES À DOMICILE"}</span><h1>{p.businessName || p.name}</h1><p>{p.businessName && `${p.name} · `}{p.serviceCity || "Zone non renseignée"}</p><div className="client-profile-badges">{p.verifiedAt && <span><Icon name="shield" size={15}/> Profil vérifié par HomeFix</span>}<span><Icon name="star" size={15}/>{summary._avg.rating !== null ? `${summary._avg.rating.toFixed(1)} / 5 · ${summary._count} avis` : summary._count ? `${summary._count} avis` : "Pas encore d’avis"}</span></div></div></section>
+    <section className="client-profile-hero"><ProfessionalAvatar id={p.id} name={p.name} hasPhoto={!!p.profilePhotoMime}/><div><span className="eyebrow">{p.specialty || "SERVICES À DOMICILE"}</span><h1>{p.businessName || p.name}</h1><p>{p.businessName && `${p.name} · `}{p.serviceCity || "Zone non renseignée"}</p><div className="client-profile-badges">{p.verifiedAt && <span><Icon name="shield" size={15}/> Profil vérifié par HomeFix</span>}<span><Icon name="star" size={15}/>{publicRating !== null ? `${publicRating.toFixed(1)} / 5 · ${summary._count} avis` : summary._count ? `${summary._count} avis` : "Pas encore d’avis"}</span></div></div></section>
     <div className="client-profile-layout"><div className="client-profile-sections">
       <section className="client-panel"><span className="eyebrow">FAISONS CONNAISSANCE</span><h2>À propos</h2><p className="client-pre-wrap">{p.description || "Ce professionnel n’a pas encore ajouté de présentation. Contactez-le pour discuter de votre projet."}</p></section>
       <section className="client-panel"><h2>Services & savoir-faire</h2><span className="directory-specialty">{p.specialty || "Services non renseignés"}</span><dl className="client-profile-facts"><div><dt>Expérience</dt><dd>{p.experienceYears !== null ? `${p.experienceYears} ans` : p.experience || "Non renseignée"}</dd></div><div><dt>Zone principale</dt><dd>{p.serviceCity || "Non renseignée"}</dd></div><div><dt>Zones d’intervention</dt><dd>{p.coveredAreas || "À confirmer avec le professionnel"}</dd></div><div><dt>Disponibilité annoncée</dt><dd>{p.availability ? availabilityLabels[p.availability] : "À confirmer"}</dd></div></dl></section>

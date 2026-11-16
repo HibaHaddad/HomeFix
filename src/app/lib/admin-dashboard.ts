@@ -1,3 +1,4 @@
+import { accountingTotals } from "./payment-accounting";
 import { prisma } from "@/app/lib/prisma";
 import "server-only";
 
@@ -95,9 +96,8 @@ type BucketCount = { period: string; count: number };
 export async function getAdminDashboardData(period: DashboardPeriod) {
   const range = getDashboardDateRange(period);
   const requestWhere = { kind: { not: "MESSAGE" }, createdAt: { gte: range.start, lt: range.end } };
-  const [gross, refunds, openReports, latestAudit] = await Promise.all([
-    prisma.checkoutPayment.aggregate({ where: { livemode: false, status: { in: ["SUCCEEDED", "REFUNDED"] } }, _sum: { amountMillimes: true } }),
-    prisma.adminRefund.aggregate({ where: { status: "SUCCEEDED" }, _sum: { amountMillimes: true } }),
+  const [totals, openReports, latestAudit] = await Promise.all([
+    accountingTotals(),
     prisma.reviewReport.count({ where: { status: "OPEN" } }),
     prisma.adminAuditLog.findMany({ orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 6, select: { id: true, action: true, target: true, actorName: true, createdAt: true } }),
   ]);
@@ -173,8 +173,8 @@ export async function getAdminDashboardData(period: DashboardPeriod) {
     kpis: {
       totalUsers, totalClients, totalProfessionals, pendingProfessionals,
       approvedProfessionals, totalRequests, completedRequests, openComplaints, totalReviews,
-      grossTnd: (gross._sum.amountMillimes ?? 0) / 1000,
-      netTnd: ((gross._sum.amountMillimes ?? 0) - (refunds._sum.amountMillimes ?? 0)) / 1000,
+      grossTnd: totals.gross / 1000,
+      netTnd: totals.commissions / 1000,
       openReports,
     },
     signups: series(signupBuckets),

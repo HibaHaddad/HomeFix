@@ -1,5 +1,6 @@
 import { prisma } from "@/app/lib/prisma";
 import ProfessionalReviewsList from "./ProfessionalReviewsList";
+import ProfessionalSanctions from "./ProfessionalSanctions";
 
 export default async function ProfessionalReviews({ professionalId }: { professionalId: number }) {
   const reviews = await prisma.professionalReview.findMany({
@@ -13,5 +14,6 @@ export default async function ProfessionalReviews({ professionalId }: { professi
   return <>
     <div className="pro-page-heading"><div><div className="pro-eyebrow"><span />LA CONFIANCE DE VOS CLIENTS</div><h1>Avis clients</h1><p>Les retours de vos interventions, au même endroit.</p></div></div>
     <ProfessionalReviewsList reviews={reviews.map((review) => ({ ...review, createdAt: review.createdAt.toISOString() }))} />
+    <ProfessionalSanctions professionalId={professionalId} kind="rating"/>
   </>;
 }

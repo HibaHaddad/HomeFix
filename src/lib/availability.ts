@@ -2,6 +2,9 @@ export const HOUR_MS = 60 * 60 * 1000;
 export const blockingBookingStatuses = ["PROPOSED", "COUNTER_PROPOSED", "ACCEPTED", "CONFIRMED"];
 export const tunisDay = (value: string | Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Tunis", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
 export const tunisTime = (value: string | Date) => new Intl.DateTimeFormat("fr-TN", { timeZone: "Africa/Tunis", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(value));
+export function availabilityState(slot: { startsAt: string | Date; endsAt: string | Date }, now: number): "upcoming" | "ongoing" | "past" {
+  return +new Date(slot.endsAt) <= now ? "past" : +new Date(slot.startsAt) <= now ? "ongoing" : "upcoming";
+}
 export function monthBounds(month: string) {
   if (!/^20\d{2}-(0[1-9]|1[0-2])$/.test(month)) throw new Error("Mois invalide.");
   const [year, m] = month.split("-").map(Number);

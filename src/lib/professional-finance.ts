@@ -11,12 +11,22 @@ export type FinanceTransaction = {
   reference: string | null;
   receiptUrl: string | null;
   reason?: string;
+  grossMillimes?: number;
+  commissionBps?: number;
+  commissionMillimes?: number;
+  refundedMillimes?: number;
+  refundedCommissionMillimes?: number;
+  historical?: boolean;
+  paymentId?: string;
 };
 export type ProfessionalFinance = {
   earnedMillimes: number;
   sanctionsMillimes: number;
   netMillimes: number;
   pendingMillimes: number;
+  commissionsMillimes: number;
+  refundedMillimes: number;
+  balanceMillimes: number;
   transactions: FinanceTransaction[];
 };
 type FinanceInvoice = {
@@ -24,7 +34,7 @@ type FinanceInvoice = {
   receiptUrl: string | null; paymentReference: string | null;
   quote: { status: string; request: { id: number; title: string; status: string; client: { name: string } } };
   // Only webhook-confirmed Stripe Test payments are selected by the server.
-  payments: { id: string; amountMillimes: number; updatedAt: Date; paymentIntentId: string | null }[];
+  payments: { id: string; amountMillimes: number; updatedAt: Date; paymentIntentId: string | null; allocation?: { grossMillimes: number; commissionBps: number; commissionMillimes: number; professionalMillimes: number; refundedMillimes: number; refundedCommissionMillimes: number; refundedProfessionalMillimes: number; historical: boolean; createdAt: Date } | null }[];
 };
 
 export function financePeriod(raw: string | undefined, now = new Date()): { key: FinancePeriod; start: Date | null } {
@@ -39,7 +49,8 @@ export function financePeriod(raw: string | undefined, now = new Date()): { key:
   return { key, start };
 }
 
-export function buildProfessionalFinance(invoices: FinanceInvoice[], start: Date | null): ProfessionalFinance {
+export type FinanceSanction = { id: string; amountMillimes: number; appliedAt: Date | null; decisionReason: string | null; reason: string; requestId: number; request: { title: string; client: { name: string } } };
+export function buildProfessionalFinance(invoices: FinanceInvoice[], start: Date | null, sanctions: FinanceSanction[] = []): ProfessionalFinance {
   const transactions: FinanceTransaction[] = [];
   const seen = new Set<string>();
   for (const invoice of invoices) {
@@ -49,10 +60,15 @@ export function buildProfessionalFinance(invoices: FinanceInvoice[], start: Date
       // paidMillimes and priorPaidMillimes are cumulative balances, never additional gains.
       if (!payment.paymentIntentId || seen.has(payment.paymentIntentId)) continue;
       seen.add(payment.paymentIntentId);
-      if (start && payment.updatedAt < start) continue;
-      transactions.push({ ...common, id: `gain-${payment.id}`, kind: "gain", amountMillimes: payment.amountMillimes,
-        date: payment.updatedAt.toISOString(), reference: payment.paymentIntentId,
-        receiptUrl: invoice.paymentReference === payment.paymentIntentId && invoice.receiptUrl?.startsWith("https://") ? invoice.receiptUrl : null });
+      const allocation = payment.allocation;
+      const date = allocation?.createdAt ?? payment.updatedAt;
+      if (start && date < start) continue;
+      transactions.push({ ...common, id: `gain-${payment.id}`, paymentId: payment.id, kind: "gain", amountMillimes: allocation ? allocation.professionalMillimes - allocation.refundedProfessionalMillimes : payment.amountMillimes,
+        grossMillimes: allocation?.grossMillimes ?? payment.amountMillimes, commissionBps: allocation?.commissionBps ?? 0,
+        commissionMillimes: allocation?.commissionMillimes ?? 0, refundedMillimes: allocation?.refundedMillimes ?? 0,
+        refundedCommissionMillimes: allocation?.refundedCommissionMillimes ?? 0, historical: allocation?.historical ?? true,
+        date: date.toISOString(), reference: payment.paymentIntentId,
+        receiptUrl: allocation ? `/api/professionnel/paiements/${payment.id}/recu` : invoice.paymentReference === payment.paymentIntentId && invoice.receiptUrl?.startsWith("https://") ? invoice.receiptUrl : null });
     }
     const balance = Math.max(0, invoice.totalMillimes - invoice.paidMillimes);
     if (balance && !["PAID", "REFUNDED"].includes(invoice.status) && invoice.quote.status === "ACCEPTED"
@@ -61,12 +77,18 @@ export function buildProfessionalFinance(invoices: FinanceInvoice[], start: Date
         date: invoice.createdAt.toISOString(), reference: null, receiptUrl: null });
     }
   }
+  for (const sanction of sanctions) {
+    if (!sanction.appliedAt || start && sanction.appliedAt < start || sanction.amountMillimes <= 0) continue;
+    transactions.push({ id: `sanction-${sanction.id}`, kind: "sanction", amountMillimes: sanction.amountMillimes, date: sanction.appliedAt.toISOString(), title: sanction.request.title, client: sanction.request.client.name, requestId: sanction.requestId, invoiceId: 0, reference: null, receiptUrl: null, reason: sanction.decisionReason || sanction.reason });
+  }
   transactions.sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id));
-  const earnedMillimes = transactions.reduce((sum, row) => sum + (row.kind === "gain" ? row.amountMillimes : 0), 0);
+  const earnedMillimes = transactions.reduce((sum, row) => sum + (row.kind === "gain" ? row.grossMillimes ?? row.amountMillimes : 0), 0);
+  const commissionsMillimes = transactions.reduce((sum, row) => sum + (row.kind === "gain" ? (row.commissionMillimes ?? 0) - (row.refundedCommissionMillimes ?? 0) : 0), 0);
+  const refundedMillimes = transactions.reduce((sum, row) => sum + (row.refundedMillimes ?? 0), 0);
   const pendingMillimes = transactions.reduce((sum, row) => sum + (row.kind === "pending" ? row.amountMillimes : 0), 0);
-  // Interface reserved for future sanctions, without a sanction management system.
-  const sanctionsMillimes = 0;
-  return { transactions, earnedMillimes, sanctionsMillimes, netMillimes: earnedMillimes - sanctionsMillimes, pendingMillimes };
+  const sanctionsMillimes = transactions.reduce((sum,row) => sum + (row.kind === "sanction" ? row.amountMillimes : 0), 0);
+  const netMillimes = earnedMillimes - refundedMillimes - commissionsMillimes - sanctionsMillimes;
+  return { transactions, earnedMillimes, sanctionsMillimes, commissionsMillimes, refundedMillimes, balanceMillimes: netMillimes, netMillimes, pendingMillimes };
 }
 
 export function financeMoney(millimes: number) {

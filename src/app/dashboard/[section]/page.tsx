@@ -5,8 +5,9 @@ import { prisma } from "@/app/lib/prisma";
 import ClientWorkspace from "@/components/client/ClientWorkspace";
 import HomeFixHelp from "@/components/support/HomeFixHelp";
 import AssistantChat from "@/components/client/AssistantChat";
+import { clientComplaintHistory } from "@/app/lib/client-complaints";
 const allowed = ["demandes", "messagerie", "devis", "reservations", "interventions", "paiements", "avis", "logement", "favoris", "assistant", "notifications", "profil", "reclamations"];
-export default async function ClientSectionPage({ params, searchParams }: { params: Promise<{ section: string }>; searchParams: Promise<{ demande?: string; before?: string }> }) {
+export default async function ClientSectionPage({ params, searchParams }: { params: Promise<{ section: string }>; searchParams: Promise<{ demande?: string; before?: string; reclamation?: string }> }) {
   const { section } = await params;
   if (!allowed.includes(section)) notFound();
   const client = await getClient();
@@ -15,13 +16,17 @@ export default async function ClientSectionPage({ params, searchParams }: { para
   const search = await searchParams;
   const selected = Number(search.demande);
   if (section === "reclamations") {
-    const [contact, intervention] = await Promise.all([
+    const selectedComplaint = Number(search.reclamation);
+    const [contact, interventions, history] = await Promise.all([
       prisma.user.findUniqueOrThrow({ where: { id: client.id }, select: { email: true } }),
-      Number.isSafeInteger(selected) && selected > 0
-        ? prisma.serviceRequest.findFirst({ where: { id: selected, clientId: client.id }, select: { title: true } })
-        : null,
+      prisma.serviceRequest.findMany({ where: { clientId: client.id, kind: { not: "MESSAGE" } }, orderBy: { createdAt: "desc" }, take: 100, select: { id: true, title: true, createdAt: true, professional: { select: { name: true, businessName: true } } } }),
+      clientComplaintHistory(client.id, undefined, Number.isSafeInteger(selectedComplaint) && selectedComplaint > 0 && selectedComplaint <= 2147483647 ? selectedComplaint : undefined),
     ]);
-    return <HomeFixHelp name={client.name} email={contact.email} initialIntervention={intervention?.title} />;
+    if (Number.isSafeInteger(selected) && selected > 0 && selected <= 2147483647 && !interventions.some(item => item.id === selected)) {
+      const intervention = await prisma.serviceRequest.findFirst({ where: { id: selected, clientId: client.id, kind: { not: "MESSAGE" } }, select: { id: true, title: true, createdAt: true, professional: { select: { name: true, businessName: true } } } });
+      if (intervention) interventions.unshift(intervention);
+    }
+    return <HomeFixHelp name={client.name} email={contact.email} clientEnabled initialRequestId={interventions.some(item => item.id === selected) ? selected : undefined} interventions={interventions.map(item => ({ id: item.id, title: item.title, professional: item.professional.businessName || item.professional.name, createdAt: item.createdAt.toISOString() }))} history={JSON.parse(JSON.stringify(history))} />;
   }
   const cursor = Number(search.before);
   const workspace = await clientWorkspace(client.id, Number.isSafeInteger(cursor) && cursor > 0 ? cursor : undefined, section === "interventions" && Number.isSafeInteger(selected) && selected > 0 ? selected : undefined);

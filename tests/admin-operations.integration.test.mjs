@@ -50,7 +50,7 @@ test("Admin modules: permissions, private reading, moderation, complaints, setti
       assert.equal(new URL(suspendedPage.url).pathname, "/login", "suspended administrators must reach login without a redirect loop");
     });
     await t.test("server pages render and conversation text never appears before explicit access", async () => {
-      for (const path of ["/admin", "/admin/utilisateurs", "/admin/professionnels", "/admin/demandes", "/admin/reservations", "/admin/avis", "/admin/messagerie", `/admin/messagerie/${request.id}`, "/admin/paiements", "/admin/sanctions", "/admin/notifications", "/admin/activites", "/admin/parametres", "/admin/reclamations"]) {
+      for (const path of ["/admin", "/admin/utilisateurs", "/admin/professionnels", "/admin/demandes", "/admin/avis", "/admin/messagerie", `/admin/messagerie/${request.id}`, "/admin/paiements", "/admin/sanctions", "/admin/notifications", "/admin/activites", "/admin/parametres", "/admin/reclamations"]) {
         const response = await fetch(base + path, { headers: admin.headers });
         assert.equal(response.status, 200, path);
         const html = await response.text();
@@ -59,15 +59,15 @@ test("Admin modules: permissions, private reading, moderation, complaints, setti
       const oldDetail = await fetch(`${base}/admin/demandes/${request.id}`, { headers: admin.headers });
       assert.doesNotMatch(await oldDetail.text(), /PRIVATE_INITIAL_MESSAGE/);
     });
-    await t.test("reason is mandatory, pagination and successful private accesses are audited", async () => {
+    await t.test("reason-free access, pagination and successful private accesses are audited", async () => {
       const url = `/api/admin/conversations/${request.id}/access`;
-      await call(admin, url, { reason: "short" }, 400);
+      await call(admin, url, { before: "invalid" }, 400);
       assert.equal(await prisma.adminAuditLog.count({ where: { actorId: admin.id, action: "CONVERSATION_READ" } }), 0);
-      const data = await call(admin, url, { reason: "Examine fixture complaint" }, 200);
+      const data = await call(admin, url, {}, 200);
       assert.equal(data.messages.length, 50);
       assert.equal(data.initialMessage, "PRIVATE_INITIAL_MESSAGE");
       assert.ok(data.nextBefore);
-      const earlier = await call(admin, url, { reason: "Examine fixture complaint", before: data.nextBefore }, 200);
+      const earlier = await call(admin, url, { before: data.nextBefore }, 200);
       assert.equal(earlier.messages.length, 2);
       assert.equal(new Set([...data.messages, ...earlier.messages].map(m => m.id)).size, 52);
       const logs = await prisma.adminAuditLog.findMany({ where: { actorId: admin.id, action: "CONVERSATION_READ" } });

@@ -7,6 +7,7 @@ import "./admin-shell.css";
 import "./admin-dashboard.css";
 import "./admin-workspace.css";
 import "./admin-premium.css";
+import "./admin-dashboard-preferences.css";
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const session = await getSession();

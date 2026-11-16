@@ -19,15 +19,17 @@ export type DirectoryResponse = {
 
 const base = Prisma.sql`
   WITH directory AS (
-    SELECT u."id", u."name", u."businessName", u."specialty", u."description", u."experience",
+    SELECT u."id", u."name", u."businessName", c."name" AS "specialty", u."description", u."experience",
       u."experienceYears", u."serviceCity", u."coveredAreas", u."priceRange", u."priceMin", u."priceMax",
       u."availability", u."createdAt", (u."verifiedAt" IS NOT NULL) AS "verified",
-      (u."profilePhotoMime" IS NOT NULL) AS "hasPhoto", r."rating", COALESCE(r."reviewCount", 0)::int AS "reviewCount"
+      (u."profilePhotoMime" IS NOT NULL) AS "hasPhoto", CASE WHEN r."rating" IS NULL THEN NULL ELSE GREATEST(1::float8, r."rating" - COALESCE(s.penalty, 0)::float8 / 100) END AS "rating", COALESCE(r."reviewCount", 0)::int AS "reviewCount"
     FROM "User" u
+    INNER JOIN "ServiceCategory" c ON c."isActive" = true AND (c.id = u."categoryId" OR (u."categoryId" IS NULL AND u."specialty" = ANY(c.aliases)))
     LEFT JOIN (
       SELECT "professionalId", AVG("rating")::float8 AS "rating", COUNT(*)::int AS "reviewCount"
       FROM "ProfessionalReview" WHERE "published" = true GROUP BY "professionalId"
     ) r ON r."professionalId" = u."id"
+    LEFT JOIN (SELECT "professionalId", SUM("ratingHundredths") AS penalty FROM "ProfessionalSanction" WHERE status = 'APPLIED' GROUP BY "professionalId") s ON s."professionalId" = u."id"
     WHERE u."role" = 'PROFESSIONAL' AND u."status" = 'APPROVED' AND u."isSuspended" = false AND u."isPublic" = true AND u."termsAccepted" = true
   )`;
 
@@ -74,7 +76,7 @@ export async function searchProfessionals(filters: DirectoryFilters): Promise<Di
       FROM directory WHERE ${where} ORDER BY ${order}, "id" DESC LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`);
     const facets = await tx.$queryRaw<{ specialties: string[]; locations: string[] }[]>(Prisma.sql`
       ${base} SELECT
-      ARRAY(SELECT DISTINCT "specialty" FROM directory WHERE "specialty" IS NOT NULL AND "specialty" <> '' ORDER BY "specialty") AS specialties,
+      ARRAY(SELECT name FROM "ServiceCategory" WHERE "isActive" = true ORDER BY name) AS specialties,
       ARRAY(SELECT DISTINCT "serviceCity" FROM directory WHERE "serviceCity" IS NOT NULL AND "serviceCity" <> '' ORDER BY "serviceCity") AS locations`);
     return { professionals, total, page, pageSize,
       specialties: facets[0].specialties, locations: facets[0].locations,

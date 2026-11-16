@@ -8,6 +8,7 @@ import { dateLabel } from "@/lib/client-domain";
 import { financeMoney, type FinancePeriod, type FinanceTransaction, type ProfessionalFinance } from "@/lib/professional-finance";
 import { getChatSocket } from "@/lib/chat-socket";
 import styles from "./ProfessionalPayments.module.css";
+import { commissionLabel } from "@/lib/payment-allocation";
 
 type Filter = "all" | FinanceTransaction["kind"];
 const filters: { key: Filter; label: string }[] = [
@@ -57,9 +58,10 @@ export default function ProfessionalFinanceDashboard({ finance, period, updatedA
     startTransition(() => router.push(`${url.pathname}${url.search}`, { scroll: false }));
   };
   const summary = [
-    { label: "Total gagné", value: finance.earnedMillimes, note: "Paiements test confirmés", style: styles.gain, icon: ArrowDownLeft },
-    { label: "Sanctions et pénalités", value: finance.sanctionsMillimes, note: "Aucune sanction pour le moment", style: styles.sanction, icon: ShieldCheck },
-    { label: "Revenu net", value: finance.netMillimes, note: "Gains − sanctions", style: styles.net, icon: Wallet },
+    { label: "Gains bruts", value: finance.earnedMillimes, note: "Montants initiaux des paiements confirmés", style: styles.gain, icon: ArrowDownLeft },
+    { label: "Commissions déduites", value: finance.commissionsMillimes, note: "Après annulation des commissions remboursées", style: styles.sanction, icon: ShieldCheck },
+    { label: "Sanctions financières", value: finance.sanctionsMillimes, note: "Décisions Admin actives, hors commissions", style: styles.sanction, icon: TriangleAlert },
+    { label: "Revenu net", value: finance.netMillimes, note: `Après commissions, sanctions et ${financeMoney(finance.refundedMillimes)} de remboursements`, style: styles.net, icon: Wallet },
     { label: "Paiements en attente", value: finance.pendingMillimes, note: "Solde des factures à régler", style: styles.pending, icon: Clock3 },
   ];
 
@@ -69,6 +71,7 @@ export default function ProfessionalFinanceDashboard({ finance, period, updatedA
       <button type="button" className={styles.refresh} onClick={() => startTransition(() => router.refresh())} disabled={isPending}><RefreshCw size={15} className={isPending ? styles.spinning : ""} /><span>{isPending ? "Actualisation…" : "Actualiser"}</span></button>
     </header>
 
+    <div className={styles.balance}><div><Wallet size={22}/><div><strong>Solde comptable</strong><p>Cumul de vos revenus nets · simulation sans transfert bancaire</p></div></div><strong>{financeMoney(finance.balanceMillimes)}</strong></div>
     <section className={styles.overview} aria-label="Résumé financier" aria-busy={isPending}>
       <div className={styles.overviewLabel}><span>VUE D’ENSEMBLE</span></div>
       <div className={styles.summary}>{summary.map((item) => <article key={item.label} className={`${styles.metric} ${item.style}`}>
@@ -95,10 +98,11 @@ export default function ProfessionalFinanceDashboard({ finance, period, updatedA
 function TransactionCard({ row }: { row: FinanceTransaction }) {
   const gain = row.kind === "gain", sanction = row.kind === "sanction";
   const Icon = gain ? ArrowDownLeft : sanction ? TriangleAlert : Clock3;
-  const status = gain ? "Payé" : sanction ? "Sanction" : "En attente";
+  const status = gain ? row.refundedMillimes && row.refundedMillimes === row.grossMillimes ? "Remboursé" : row.refundedMillimes ? "Partiellement remboursé" : "Payé" : sanction ? "Sanction" : "En attente";
   return <article className={`${styles.transaction} ${gain ? styles.gain : sanction ? styles.sanction : styles.pending}`}>
     <div className={styles.transactionTop}><span className={styles.transactionIcon}><Icon size={21} /></span><div className={styles.transactionLabel}><span>{gain ? "PAIEMENT REÇU" : sanction ? "SANCTION ET PÉNALITÉ" : "PAIEMENT À RECEVOIR"}</span><time dateTime={row.date}>{dateLabel(row.date)}</time></div><span className={styles.badge}>{status}</span></div>
     <div className={styles.transactionBody}><div><h3>{row.title}</h3><p>{sanction ? row.reason : row.client}</p></div><strong className={styles.transactionAmount}>{gain ? "+" : sanction ? "−" : ""}{financeMoney(row.amountMillimes)}</strong></div>
-    <div className={styles.cardActions}><Link href={`/professionnel/interventions?demande=${row.requestId}#intervention-${row.requestId}`}>Intervention<ArrowUpRight size={14} /></Link>{row.receiptUrl && <a href={row.receiptUrl} target="_blank" rel="noopener noreferrer"><ReceiptText size={14} />Reçu</a>}</div>
+    {gain && <dl className={styles.allocation}><div><dt>Montant initial</dt><dd>{financeMoney(row.grossMillimes ?? row.amountMillimes)}</dd></div><div><dt>Commission · {commissionLabel(row.commissionBps ?? 0)}</dt><dd>−{financeMoney(row.commissionMillimes ?? 0)}</dd></div>{!!row.refundedMillimes && <><div><dt>Montant remboursé au client</dt><dd>{financeMoney(row.refundedMillimes)}</dd></div><div><dt>Commission annulée</dt><dd>+{financeMoney(row.refundedCommissionMillimes ?? 0)}</dd></div></>}<div><dt>Revenu net reçu</dt><dd>{financeMoney(row.amountMillimes)}</dd></div></dl>}
+    <div className={styles.cardActions}><Link href={`/professionnel/interventions?demande=${row.requestId}#intervention-${row.requestId}`}>Intervention<ArrowUpRight size={14} /></Link>{row.receiptUrl && <a href={row.receiptUrl} target="_blank" rel="noopener noreferrer"><ReceiptText size={14} />Reçu détaillé</a>}{row.historical && <small>Paiement antérieur · sans commission rétroactive</small>}</div>
   </article>;
 }

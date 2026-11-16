@@ -6,7 +6,7 @@ import { useState } from "react";
 import {
   Activity, Bell, BriefcaseBusiness, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardList, FolderKanban, LayoutDashboard, Menu, MessageSquareWarning,
-  Search, Settings, ShieldCheck, Star, Users, X, CalendarDays, CreditCard, MessagesSquare, Scale,
+  Settings, ShieldCheck, Star, Users, X, CreditCard, MessagesSquare, Scale,
 } from "lucide-react";
 import HomeFixBrand from "@/components/HomeFixBrand";
 import LogoutButton from "@/components/LogoutButton";
@@ -16,7 +16,6 @@ const navigation = [
   { label: "Utilisateurs", href: "/admin/utilisateurs", icon: Users, available: true, group: "Gestion" },
   { label: "Prestataires", href: "/admin/professionnels", icon: BriefcaseBusiness, available: true, group: "Gestion" },
   { label: "Demandes et interventions", href: "/admin/demandes", icon: ClipboardList, available: true, group: "Gestion" },
-  { label: "Réservations", href: "/admin/reservations", icon: CalendarDays, available: true, group: "Gestion" },
   { label: "Catégories", href: "/admin/categories", icon: FolderKanban, available: true, group: "Gestion" },
   { label: "Réclamations", href: "/admin/reclamations", icon: MessageSquareWarning, available: true, group: "Modération" },
   { label: "Avis et modération", href: "/admin/avis", icon: Star, available: true, group: "Modération" },
@@ -35,7 +34,6 @@ const titles: Record<string, string> = {
   "/admin/demandes": "Demandes",
   "/admin/categories": "Catégories",
   "/admin/reclamations": "Réclamations",
-  "/admin/reservations": "Réservations",
   "/admin/avis": "Avis et modération",
   "/admin/messagerie": "Messagerie",
   "/admin/paiements": "Paiements",
@@ -120,7 +118,6 @@ export default function AdminShell({ adminName, unreadCount, children }: { admin
             <div className="admin-breadcrumbs" aria-label="Fil d’Ariane"><span>Administration</span><ChevronRight size={14} aria-hidden="true" /><strong>{title}</strong></div>
           </div>
           <div className="admin-header-actions">
-            <form className="admin-global-search" action="/admin/utilisateurs"><Search size={17} aria-hidden="true" /><input type="search" name="q" placeholder="Rechercher un utilisateur…" aria-label="Rechercher un utilisateur" maxLength={100}/><button className="sr-only" type="submit">Rechercher</button></form>
             <Link href="/admin/notifications" className="admin-icon-button admin-notification-button" aria-label={`Notifications · ${unreadCount} non lues`}><Bell size={19} />{unreadCount > 0 && <span className="aw-bell-count">{unreadCount > 99 ? "99+" : unreadCount}</span>}</Link>
             <div className="admin-account-menu">
               <button className="admin-account-trigger" aria-expanded={profileOpen} aria-haspopup="menu" onClick={() => setProfileOpen((value) => !value)}>

@@ -1,16 +1,60 @@
+import Link from "next/link";
+import { CheckCheck, EyeOff, Flag, MessageSquareText, RotateCcw, Search, SlidersHorizontal, Star } from "lucide-react";
 import { requireAdminPage } from "@/app/lib/admin-access";
 import { adminReviews, opsFilters, reviewStatuses } from "@/app/lib/admin-operations";
-import { AdminSection, AdminMetrics, AdminFilters, AdminTable, AdminPagination, AdminBadge, adminDate } from "@/components/admin/AdminWorkspace";
-import AdminAction from "@/components/admin/AdminAction";
-import Link from "next/link";
+import { AdminSection, AdminTable, AdminPagination } from "@/components/admin/AdminWorkspace";
+import AdminReviewAvatar from "@/components/admin/AdminReviewAvatar";
+import AdminReviewActions from "@/components/admin/AdminReviewActions";
+import "./reviews.css";
+
+const dateFormat = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeZone: "Africa/Tunis" });
+const timeFormat = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Tunis" });
+const number = new Intl.NumberFormat("fr-FR");
+const filterLabels = { PUBLISHED: "Publiés", HIDDEN: "Masqués", REPORTED: "Signalés", UNPUBLISHED: "Non publiés" };
+
+function Rating({ value }: { value: number | null }) {
+  return <div className={`ar-rating${value === null ? " ar-rating-empty" : ""}`} aria-label={value === null ? "Avis sans note" : `Note : ${value} sur 5`}>
+    <span className="ar-stars" aria-hidden="true">{Array.from({ length: 5 }, (_, index) => <Star key={index} size={13} strokeWidth={1.6} fill={value !== null && index < value ? "currentColor" : "none"}/>)}</span>
+    <span>{value === null ? "Sans note" : <><strong>{value}</strong><small>/ 5</small></>}</span>
+  </div>;
+}
+
 export default async function ReviewsPage({ searchParams }: PageProps<"/admin/avis">) {
   await requireAdminPage();
-  const f = opsFilters(await searchParams, reviewStatuses);
-  const data = await adminReviews(f);
-  return <AdminSection title="Avis et modération" description="Préservez la confiance. Examinez les commentaires et les signalements avant chaque décision.">
-    <AdminMetrics items={[{ label: "Avis publiés", value: data.published }, { label: "Signalements à examiner", value: data.reported }, { label: "Avis masqués", value: data.hidden }]}/>
-    <AdminFilters {...f} options={[{ value: "PUBLISHED", label: "Publiés" }, { value: "HIDDEN", label: "Masqués" }, { value: "REPORTED", label: "Signalés" }, { value: "UNPUBLISHED", label: "Non publiés" }]}/>
-    <AdminTable headings={["Avis", "Client et professionnel", "Publication", "Modération"]} empty={!data.rows.length}>{data.rows.map(r => <tr key={r.id}><td><strong>{r.rating === null ? "Sans note" : `${r.rating} / 5`}</strong><p className="aw-prose">{r.comment || "Sans commentaire"}</p><small>{adminDate(r.createdAt)}</small>{r.requestId && <Link href={`/admin/demandes/${r.requestId}`}>Intervention #{r.requestId}</Link>}</td><td>{r.client.name}<small>→ {r.professional.businessName || r.professional.name}</small>{r._count.reports > 0 && <div className="aw-review-reports"><strong>{r._count.reports} signalement(s) ouvert(s)</strong>{r.reports.map(report => <p className="aw-prose" key={report.id}>{report.reason}</p>)}</div>}</td><td><AdminBadge value={r.moderationStatus === "HIDDEN" ? "HIDDEN" : r.published ? "APPROVED" : "PENDING"}/>{r.moderationReason && <p className="aw-prose">{r.moderationReason}</p>}</td><td><div className="aw-actions"><AdminAction label={r.published ? "Masquer" : "Publier"} endpoint={`/api/admin/avis/${r.id}/moderation`} danger={r.published} payload={{ action: r.published ? "HIDE" : "PUBLISH" }} fields={[{ name: "reason", label: "Motif de la décision", type: "textarea" }]}/>{r._count.reports > 0 && <AdminAction label="Classer les signalements" endpoint={`/api/admin/avis/${r.id}/moderation`} payload={{ action: "DISMISS_REPORTS" }} fields={[{ name: "reason", label: "Motif du classement", type: "textarea" }]}/>}</div></td></tr>)}</AdminTable>
-    <AdminPagination page={data.page} total={data.total} query={{ q: f.q, status: f.status }}/>
-  </AdminSection>;
+  const filters = opsFilters(await searchParams, reviewStatuses);
+  const data = await adminReviews(filters);
+  const hasFilters = Boolean(filters.q || filters.status !== "ALL");
+  const metrics = [
+    { label: "Avis publiés", value: data.published, detail: "Visibles sur la plateforme", icon: CheckCheck, tone: "green" },
+    { label: "Signalements à examiner", value: data.reported, detail: "Signalements encore ouverts", icon: Flag, tone: "peach" },
+    { label: "Avis masqués", value: data.hidden, detail: "Retirés de la publication", icon: EyeOff, tone: "rose" },
+  ];
+  return <div className="admin-reviews-page"><AdminSection title="Avis et modération" description="Préservez la confiance. Examinez les commentaires et les signalements avant chaque décision.">
+    <section className="admin-kpi-grid ar-kpis" aria-label="Statistiques des avis">{metrics.map(({ label, value, detail, icon: Icon, tone }) => <article className="admin-kpi-card" key={label}>
+      <span className={`admin-kpi-icon tone-${tone}`}><Icon size={20} strokeWidth={1.8} aria-hidden="true"/></span><span className="admin-kpi-label">{label}</span><strong className="admin-kpi-value">{number.format(value)}</strong><small className="admin-kpi-detail">{detail}</small>
+    </article>)}</section>
+    <section className="ar-list-section" aria-labelledby="ar-list-title">
+      <div className="ar-list-heading"><div><span className="ar-heading-icon"><MessageSquareText size={18}/></span><h2 id="ar-list-title">{hasFilters ? "Avis correspondants" : "Les avis de la communauté"}</h2></div><span>{number.format(data.total)} résultat{data.total > 1 ? "s" : ""}</span></div>
+      <form className="ar-filters" action="/admin/avis" method="get">
+        <label className="ar-search"><span>Rechercher un avis</span><span className="ar-search-input"><Search size={17} aria-hidden="true"/><input type="search" name="q" defaultValue={filters.q} maxLength={100} placeholder="Commentaire, client ou professionnel…"/></span></label>
+        <label className="ar-status-filter"><span>Statut de l’avis</span><select name="status" defaultValue={filters.status}><option value="ALL">Tous les statuts</option>{Object.entries(filterLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <div className="ar-filter-actions"><button className="admin-button admin-button-primary" type="submit"><SlidersHorizontal size={15}/>Filtrer</button><Link className="ar-reset" href="/admin/avis"><RotateCcw size={14}/>Réinitialiser</Link></div>
+      </form>
+      {!data.rows.length ? <div className="aw-panel ar-empty"><span><Star size={29} strokeWidth={1.5}/></span><h3>{hasFilters ? "Aucun avis ne correspond à votre recherche" : "Les premiers avis se feront bientôt entendre"}</h3><p>{hasFilters ? "Essayez un autre mot-clé ou un autre statut pour retrouver les avis à examiner." : "Les avis apparaîtront ici dès leur enregistrement sur HomeFix TN."}</p>{hasFilters && <Link href="/admin/avis" className="admin-button admin-button-light">Afficher tous les avis</Link>}</div> : <div className="ar-table-wrapper"><AdminTable headings={["Client", "Professionnel", "Note", "Commentaire", "Date", "Statut", "Actions"]}>{data.rows.map(review => {
+        const professionalName = review.professional.businessName || review.professional.name;
+        const status = review.moderationStatus === "HIDDEN" ? "hidden" : review.published ? "published" : "pending";
+        const comment = review.comment || "Sans commentaire";
+        return <tr key={review.id}>
+          <td><div className="ar-person"><AdminReviewAvatar userId={review.client.id} name={review.client.name} hasPhoto={Boolean(review.client.profilePhotoMime)}/><span><strong>{review.client.name}</strong><small>Client</small></span></div></td>
+          <td><div className="ar-person"><AdminReviewAvatar userId={review.professional.id} name={professionalName} hasPhoto={Boolean(review.professional.profilePhotoMime)} professional/><span><strong>{professionalName}</strong><small>{review.professional.businessName && review.professional.businessName !== review.professional.name ? review.professional.name : "Prestataire"}</small></span></div></td>
+          <td><Rating value={review.rating}/></td>
+          <td><div className="ar-comment"><p>{comment.length > 155 ? `${comment.slice(0, 155)}…` : comment}</p>{comment.length > 155 && <details><summary>Lire le commentaire complet</summary><p>{comment}</p></details>}{review._count.reports > 0 && <details className="ar-reports"><summary><Flag size={12}/>{review._count.reports} signalement{review._count.reports > 1 ? "s" : ""} à examiner</summary><ul>{review.reports.map(report => <li key={report.id}>{report.reason}</li>)}</ul></details>}</div></td>
+          <td><time className="ar-date" dateTime={review.createdAt.toISOString()}>{dateFormat.format(review.createdAt)}<small>{timeFormat.format(review.createdAt)}</small></time></td>
+          <td><span className={`ar-status ar-status-${status}`}><i/>{status === "published" ? "Publié" : status === "hidden" ? "Masqué" : "Non publié"}</span>{review.moderationReason && <details className="ar-decision"><summary>Motif de la décision</summary><p>{review.moderationReason}</p></details>}</td>
+          <td><AdminReviewActions key={`${review.id}-${review.published}-${review._count.reports}`} reviewId={review.id} published={review.published} hidden={review.moderationStatus === "HIDDEN"} hasReports={review._count.reports > 0} requestId={review.requestId}/></td>
+        </tr>;
+      })}</AdminTable></div>}
+      {data.total > 0 && <div className="ar-pagination"><AdminPagination page={data.page} total={data.total} query={{ q: filters.q, status: filters.status }}/></div>}
+    </section>
+  </AdminSection></div>;
 }

@@ -4,6 +4,7 @@ import path from "node:path";
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, rgb, type PDFFont } from "pdf-lib";
 import { dateLabel, money } from "@/lib/client-domain";
+import { commissionLabel } from "@/lib/payment-allocation";
 
 type Receipt = {
   id: number;
@@ -18,6 +19,7 @@ type Receipt = {
   totalMillimes: number;
   paidMillimes: number;
   testPaid: boolean;
+  allocation?: { grossMillimes: number; commissionBps: number; commissionMillimes: number; professionalMillimes: number; refundedMillimes: number; refundedCommissionMillimes: number; refundedProfessionalMillimes: number };
 };
 
 let fonts: Promise<Buffer[]> | undefined;
@@ -73,14 +75,17 @@ export async function createReceiptPdf(receipt: Receipt) {
   text(`Professionnel : ${receipt.professional}`);
   y -= 20;
   if (receipt.details) { text(receipt.details, 11, regular, muted); y -= 20; }
-  room(165);
-  page.drawRectangle({ x: left, y: y - 131, width, height: 146, color: rgb(.95, .97, .93) });
+  const allocation = receipt.allocation;
+  const amounts: [string, number, boolean][] = allocation ? [
+    ["Montant initial", allocation.grossMillimes, false],
+    [`Commission HomeFix TN (${commissionLabel(allocation.commissionBps)})`, allocation.commissionMillimes, false],
+    ...(allocation.refundedMillimes ? [["Remboursements client", allocation.refundedMillimes, false], ["Commission annulée", allocation.refundedCommissionMillimes, false]] as [string, number, boolean][] : []),
+    ["Revenu net reçu", allocation.professionalMillimes - allocation.refundedProfessionalMillimes, true],
+  ] : [["Montant total payé", receipt.paidMillimes, true]];
+  room(amounts.length * 39 + 48);
+  page.drawRectangle({ x: left, y: y - amounts.length * 39 - 14, width, height: amounts.length * 39 + 29, color: rgb(.95, .97, .93) });
   y -= 12;
-  for (const [label, amount, emphasis] of [
-    ["Prix final accepté", receipt.totalMillimes, false],
-    [receipt.testPaid ? "Montant validé en test" : "Montant payé", receipt.paidMillimes, true],
-    ["Solde à régler", receipt.totalMillimes - receipt.paidMillimes, false],
-  ] as const) {
+  for (const [label, amount, emphasis] of amounts) {
     const font = emphasis ? bold : regular, size = emphasis ? 13 : 11;
     const amountText = money(amount);
     page.drawText(label, { x: left + 18, y, size, font, color: green });

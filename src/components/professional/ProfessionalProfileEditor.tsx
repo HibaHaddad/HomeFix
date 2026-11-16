@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import ServiceCategorySelect from "@/components/ServiceCategorySelect";
 
 export type EditableProfessionalProfile = {
   name: string;
@@ -70,7 +71,7 @@ export default function ProfessionalProfileEditor({ profile }: { profile: Editab
       <label><span>Nom professionnel</span><input required minLength={2} maxLength={120} autoComplete="organization" value={values.businessName} onChange={(event) => update("businessName", event.target.value)} /></label>
       <label><span>Adresse e-mail</span><input required type="email" maxLength={254} autoComplete="email" value={values.email} onChange={(event) => update("email", event.target.value)} /></label>
       <label><span>Téléphone</span><input type="tel" autoComplete="tel" placeholder="+216 12345678" value={values.phone} onChange={(event) => update("phone", event.target.value)} /></label>
-      <label><span>Spécialité</span><input required minLength={2} maxLength={120} value={values.specialty} onChange={(event) => update("specialty", event.target.value)} /></label>
+      <label><span>Spécialité</span><ServiceCategorySelect value={values.specialty} onChange={value => update("specialty", value)}/></label>
       <label><span>Expérience</span><input required maxLength={120} value={values.experience} onChange={(event) => update("experience", event.target.value)} /></label>
       <label><span>Ville d’intervention</span><input required minLength={2} maxLength={120} value={values.serviceCity} onChange={(event) => update("serviceCity", event.target.value)} /></label>
       <label><span>Fourchette de prix</span><input maxLength={160} placeholder="Ex. à partir de 40 DT" value={values.priceRange} onChange={(event) => update("priceRange", event.target.value)} /></label>

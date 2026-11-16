@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, BriefcaseBusiness, Search, Shield, UserRound, Users } from "lucide-react";
 import type { AdminUserFilters } from "@/app/lib/admin-users";
+import AdminAutoFiltersForm from "./AdminAutoFiltersForm";
 
 type Result = Awaited<ReturnType<typeof import("@/app/lib/admin-users").getAdminUserList>>;
 const dateFormat = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeZone: "Africa/Tunis" });
@@ -36,7 +37,6 @@ export default function AdminUsersList({ filters, result }: { filters: AdminUser
   return <div className="admin-content admin-users-page">
     <div className="admin-page-heading admin-users-heading">
       <div><div className="admin-eyebrow"><span/>GESTION DE LA PLATEFORME</div><h1>Gestion des utilisateurs</h1><p>Consultez les comptes et leurs informations de profil.</p></div>
-      <span className="admin-users-total">{new Intl.NumberFormat("fr-FR").format(counts.total)} comptes</span>
     </div>
 
     <section className="admin-users-stats" aria-label="Comptes par catégorie">
@@ -46,13 +46,12 @@ export default function AdminUsersList({ filters, result }: { filters: AdminUser
     </section>
 
     <section className="admin-card admin-users-card">
-      <form className="admin-users-filters" action="/admin/utilisateurs" method="get">
+      <AdminAutoFiltersForm action="/admin/utilisateurs" className="admin-users-filters">
         <label className="admin-users-search"><Search size={17}/><input name="q" defaultValue={filters.q} placeholder="Nom, email ou téléphone" aria-label="Rechercher par nom, email ou téléphone" maxLength={100}/></label>
         <label><span>Rôle</span><select name="role" defaultValue={filters.role}><option value="ALL">Tous les utilisateurs</option><option value="CLIENT">Clients</option><option value="PROFESSIONAL">Prestataires</option><option value="ADMIN">Administrateurs</option></select></label>
         <label><span>Compte</span><select name="account" defaultValue={filters.account}><option value="ALL">Tous les statuts</option><option value="ACTIVE">Actifs</option><option value="SUSPENDED">Suspendus</option></select></label>
         <label><span>Inscription</span><select name="sort" defaultValue={filters.sort}><option value="newest">Plus récents</option><option value="oldest">Plus anciens</option></select></label>
-        <button type="submit" className="admin-users-filter-button">Filtrer</button>
-      </form>
+      </AdminAutoFiltersForm>
 
       <div className="admin-users-table-wrap">
         {users.length === 0 ? <div className="admin-users-empty"><span><Users size={21}/></span><h2>{matching === 0 && filters.q ? "Aucun résultat" : "Aucun utilisateur"}</h2><p>{filters.q || filters.role !== "ALL" || filters.account !== "ALL" ? "Modifiez la recherche ou les filtres pour continuer." : "Les comptes apparaîtront ici après leur inscription."}</p></div> : <table className="admin-users-table">

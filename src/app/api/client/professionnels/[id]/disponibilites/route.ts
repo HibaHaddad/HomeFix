@@ -18,7 +18,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   if (!/^20\d{2}-(0[1-9]|1[0-2])$/.test(month)) return Response.json({ error: "Mois invalide." }, { status: 400 });
   const { from, until } = monthBounds(month);
   const [slots, occupied] = await prisma.$transaction([
-    prisma.availabilitySlot.findMany({ where: { professionalId, active: true, startsAt: { gte: new Date(Math.max(+from, Date.now())), lt: until } }, select: { id: true, startsAt: true, endsAt: true }, orderBy: { startsAt: "asc" }, take: 1000 }),
+    prisma.availabilitySlot.findMany({ where: { professionalId, active: true, startsAt: { gte: from, lt: until }, endsAt: { gt: new Date() } }, select: { id: true, startsAt: true, endsAt: true }, orderBy: { startsAt: "asc" }, take: 1000 }),
     prisma.booking.findMany({ where: { professionalId, status: { in: occupiedBookingStatuses }, startsAt: { lt: until }, endsAt: { gt: from } }, select: { startsAt: true, endsAt: true } }),
   ], { isolationLevel: "RepeatableRead" });
   return Response.json({ slots: slots.filter((slot) => !occupied.some((b) => b.startsAt < slot.endsAt && b.endsAt > slot.startsAt)) }, { headers: { "Cache-Control": "private, no-store" } });

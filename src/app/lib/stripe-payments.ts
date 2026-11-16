@@ -4,6 +4,7 @@ import { prisma } from "./prisma";
 import { chatServer, userRoom } from "./chat-events";
 import { paymentMatches, testCurrencyPlan } from "@/lib/payment-rules";
 import type { CheckoutPayment } from "@/generated/prisma/client";
+import { allocatePayment } from "./payment-accounting";
 
 export class PaymentError extends Error {
   status: number;
@@ -120,9 +121,9 @@ export async function createCheckout(clientId: number, requestId: number, eligib
 /** Called ONLY with a Stripe-signature-verified event. Redirects cannot settle an invoice. */
 export async function handleStripeEvent(event: Stripe.Event, stripe = stripeClient()) {
   if (event.livemode) throw new PaymentError("Les événements Stripe réels sont interdits.", 400);
-  if (event.type.startsWith("refund.")) {
-    const { handleAdminRefundEvent } = await import("./admin-refunds");
-    return handleAdminRefundEvent(event, stripe);
+  if (event.type.startsWith("refund.") || event.type === "charge.refunded") {
+    const { handleAccountingRefundEvent } = await import("./stripe-refund-accounting");
+    return handleAccountingRefundEvent(event, stripe);
   }
   if (event.type.startsWith("payment_intent.")) {
     const { handleCardPaymentEvent } = await import("./card-payments");
@@ -155,6 +156,7 @@ export async function handleStripeEvent(event: Stripe.Event, stripe = stripeClie
       return null;
     }
     await tx.checkoutPayment.update({ where: { id: payment.id }, data: { sessionId: session.id, paymentIntentId: intent!.id, status: "SUCCEEDED" } });
+    await allocatePayment(tx, payment, r.professionalId);
     await tx.clientInvoice.update({ where: { id: invoice.id }, data: { status: "PAID", testPaid: true, paidMillimes: payment.priorPaidMillimes + payment.amountMillimes, paidAt: new Date(event.created * 1000), paymentReference: intent!.id, receiptUrl: charge?.receipt_url, receiptNumber: charge?.receipt_number } });
     await tx.serviceRequest.update({ where: { id: r.id }, data: { clientConfirmedAt: r.clientConfirmedAt || new Date() } });
     await tx.requestEvent.create({ data: { requestId: r.id, actorId: r.clientId, status: "PAID", description: "Paiement TEST confirmé par Stripe · Aucun débit réel" } });

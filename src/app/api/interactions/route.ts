@@ -18,7 +18,7 @@ export async function GET(request: Request) {
         prisma.availabilitySlot.findMany({ where: { professionalId: actor.id, active: true, startsAt: { lt: until }, endsAt: { gt: from } }, select: { id: true, startsAt: true, endsAt: true }, orderBy: { startsAt: "asc" } }),
         prisma.booking.findMany({ where: { professionalId: actor.id, startsAt: { lt: until }, endsAt: { gt: from } }, select: { id: true, requestId: true, startsAt: true, endsAt: true, status: true, request: { select: { title: true, conversationId: true, client: { select: { name: true } }, quotes: { orderBy: { createdAt: "desc" }, take: 1, select: { id: true, amountMillimes: true, status: true } } } } }, orderBy: { startsAt: "asc" } }),
       ], { isolationLevel: "RepeatableRead" });
-      return Response.json({ slots, appointments }, { headers: { "Cache-Control": "private, no-store" } });
+      return Response.json({ slots, appointments, serverNow: new Date().toISOString() }, { headers: { "Cache-Control": "private, no-store" } });
     } catch (error) { return workflowErrorResponse(error); }
   }
   const cursor = Number(new URL(request.url).searchParams.get("before") || 2147483647);
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
       if (thread) requests.unshift(thread);
     }
   }
-  const slots = await prisma.availabilitySlot.findMany({ where: { professionalId: actor.id, active: true, startsAt: { gt: new Date() } }, orderBy: { startsAt: "asc" }, take: 500 });
+  const slots = await prisma.availabilitySlot.findMany({ where: { professionalId: actor.id, active: true, endsAt: { gt: new Date() } }, orderBy: { startsAt: "asc" }, take: 500 });
   return Response.json({ requests, slots, nextCursor: requests.length === 100 ? requests[requests.length - 1].id : null }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   const actor = session && await prisma.user.findFirst({ where: { id: session.userId, role: "PROFESSIONAL", status: "APPROVED", isSuspended: false }, select: { id: true, role: true } });
   if (!actor) return Response.json({ error: "Professionnel approuvé requis." }, { status: 401 });
   const body = await request.json().catch(() => null);
-  if (!body || typeof body !== "object" || !["message.send", "quote.propose", "booking.confirm", "booking.counter", "booking.reject", "availability.create", "availability.save", "availability.remove", "intervention.status"].includes(body.action)) return Response.json({ error: "Action invalide." }, { status: 400 });
+  if (!body || typeof body !== "object" || !["message.send", "quote.propose", "booking.confirm", "booking.counter", "booking.reject", "availability.create", "availability.save", "availability.add", "availability.remove", "intervention.status"].includes(body.action)) return Response.json({ error: "Action invalide." }, { status: 400 });
   try { return Response.json(await mutateWorkspace(actor, body)); }
   catch (e) { return workflowErrorResponse(e); }
 }

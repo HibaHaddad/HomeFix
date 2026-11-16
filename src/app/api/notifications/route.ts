@@ -20,7 +20,10 @@ export async function GET(request: Request) {
     prisma.clientNotification.findMany({ where: { userId: user.id, ...(before ? { id: { lt: before } } : {}), ...(search.get("unread") === "1" ? { readAt: null } : {}) }, select: { id: true, title: true, href: true, type: true, readAt: true, createdAt: true }, orderBy: { id: "desc" }, take: 41 }),
     prisma.clientNotification.count({ where: { userId: user.id, readAt: null } }),
   ], { isolationLevel: "RepeatableRead" });
-  const notifications = records.slice(0, 40);
+  const notifications = records.slice(0, 40).map(record => ({
+    ...record,
+    title: record.title.replace(/^(Le suivi de votre réclamation) #\d+( a été mis à jour)$/, "$1$2"),
+  }));
   return Response.json({ notifications, unreadCount, nextCursor: records.length > 40 ? notifications[39].id : null }, { headers });
 }
 

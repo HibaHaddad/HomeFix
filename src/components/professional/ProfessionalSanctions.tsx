@@ -1,0 +1,18 @@
+import Link from "next/link";
+import { ShieldAlert, Star, Wallet } from "lucide-react";
+import { prisma } from "@/app/lib/prisma";
+import { sanctionLabels, sanctionPenalty, adjustedRating } from "@/lib/sanctions";
+import { adminDate } from "@/components/admin/AdminWorkspace";
+import AdminAction from "@/components/admin/AdminAction";
+import styles from "./ProfessionalSanctions.module.css";
+
+export default async function ProfessionalSanctions({ professionalId, kind }: { professionalId: number; kind: "money" | "rating" }) {
+  const rows = await prisma.professionalSanction.findMany({ where: { professionalId, status: { in: ["APPLIED","REVOKED"] }, ...(kind === "money" ? { amountMillimes: { gt: 0 } } : { ratingHundredths: { gt: 0 } }) }, orderBy: { appliedAt: "desc" }, select: { id: true, status: true, ruleId: true, reason: true, decisionReason: true, amountMillimes: true, ratingHundredths: true, incidentAt: true, appliedAt: true, appealStatus: true, appealText: true, appealResolution: true, requestId: true, request: { select: { title: true } } } });
+  const original = kind === "rating" ? await prisma.professionalReview.aggregate({ where: { professionalId, published: true }, _avg: { rating: true } }) : null;
+  const penalty = rows.reduce((sum,row) => sum + (row.status === "APPLIED" ? row.ratingHundredths : 0), 0);
+  const adjusted = adjustedRating(original?._avg.rating ?? null, penalty);
+  return <section className={styles.panel}><header><span>{kind === "money" ? <Wallet size={20}/> : <Star size={20}/>}</span><div><h2>{kind === "money" ? "Sanctions financières" : "Pénalités de notation"}</h2><p>{kind === "money" ? "Décisions administratives distinctes des commissions. Vous pouvez contester chaque sanction." : "Les avis originaux restent inchangés. Les pénalités validées affectent uniquement la note ajustée."}</p></div></header>
+    {kind === "rating" && <div className={styles.rating}><div><span>Note originale</span><strong>{original?._avg.rating === null ? "Aucun avis noté" : `${original?._avg.rating?.toFixed(1) ?? "—"}/5`}</strong></div><div><span>Pénalités actives</span><strong>−{penalty / 100} étoile(s)</strong></div><div><span>Note ajustée · minimum 1/5</span><strong>{adjusted === null ? "Disponible après un avis noté" : `${adjusted.toFixed(1)}/5`}</strong></div></div>}
+    {!rows.length ? <div className={styles.empty}><ShieldAlert size={22}/><p>Aucune sanction {kind === "money" ? "financière" : "de notation"} enregistrée.</p></div> : <div className={styles.list}>{rows.map(row => <article key={row.id} className={row.status === "REVOKED" ? styles.revoked : ""}><div className={styles.top}><strong>{sanctionLabels[row.ruleId]}</strong><span>{row.status === "REVOKED" ? "Annulée" : `−${sanctionPenalty(row)}`}</span></div><Link href={`/professionnel/interventions?demande=${row.requestId}`}>{row.request.title}</Link><small>Incident : {adminDate(row.incidentAt)} · Application : {row.appliedAt ? adminDate(row.appliedAt) : "—"}</small><p>{row.decisionReason || row.reason}</p>{row.appealStatus !== "NONE" && <details><summary>{sanctionLabels[row.appealStatus]}</summary><p>{row.appealText}</p>{row.appealResolution && <p>Réponse Admin : {row.appealResolution}</p>}</details>}{row.status === "APPLIED" && row.appealStatus === "NONE" && <AdminAction label="Contester cette sanction" endpoint={`/api/professionnel/sanctions/${row.id}/appeal`} description="Expliquez les faits et les justificatifs à examiner. La sanction reste active jusqu’à la décision Admin." fields={[{ name: "reason", label: "Votre contestation", type: "textarea", min: 10, max: 3000 }]}/>}</article>)}</div>}
+  </section>;
+}

@@ -3,12 +3,13 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { reverseGeocodeGovernorate } from "@/lib/reverse-geocode";
+import type { PublicServiceCategory } from "@/lib/service-categories";
 
 type RegistrationRole = "CLIENT" | "PROFESSIONAL";
 
 const clientSteps = ["Profil", "Coordonnées", "Informations complémentaires", "Sécurité", "Récapitulatif"];
 const professionalSteps = ["Profil", "Coordonnées", "Votre activité", "Intervention", "Sécurité", "Récapitulatif"];
-export default function AuthForm({ mode }: { mode: "login" | "register" }) {
+export default function AuthForm({ mode, categories = [] }: { mode: "login" | "register"; categories?: PublicServiceCategory[] }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState("");
@@ -43,12 +44,10 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
         formData.set("coveredAreas", serviceCity);
       }
       if (typeof data.specialtyChoice === "string") {
-        data.specialty = data.specialtyChoice === "Autre" ? data.specialtyOther : data.specialtyChoice;
+        data.specialty = data.specialtyChoice;
         formData.set("specialty", String(data.specialty));
         delete data.specialtyChoice;
-        delete data.specialtyOther;
         formData.delete("specialtyChoice");
-        formData.delete("specialtyOther");
       }
     }
 
@@ -196,7 +195,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
       if (city) values.push(["Gouvernorat", city]);
     } else {
       values.push(["Activité", String(formData.get("businessName") ?? "")]);
-      const specialty = specialtyChoice === "Autre" ? String(formData.get("specialtyOther") ?? "") : specialtyChoice;
+      const specialty = specialtyChoice;
       values.push(["Spécialité", specialty]);
       values.push(["Ville d’intervention", String(formData.get("serviceCity") ?? "")]);
       values.push(["Expérience", String(formData.get("experience") ?? "")]);
@@ -242,9 +241,8 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
       <fieldset data-step="3" hidden={step !== 3} className={`register-step-panel step-${stepDirection}`}>
         {registerRole === "CLIENT" ? <><legend>Un peu plus sur vous</legend><p className="register-step-copy">Ces informations aident à trouver des professionnels près de chez vous.</p><div className="register-fields-grid"><label className="register-field register-field-full"><span>Adresse</span><input name="address" placeholder="Rue, quartier…" autoComplete="street-address" /></label><label className="register-field register-field-full"><span>Gouvernorat</span><select name="city" defaultValue="" autoComplete="address-level1"><option value="">Choisir un gouvernorat</option><option>Ariana</option><option>Béja</option><option>Ben Arous</option><option>Bizerte</option><option>Gabès</option><option>Gafsa</option><option>Jendouba</option><option>Kairouan</option><option>Kasserine</option><option>Kébili</option><option>Le Kef</option><option>Mahdia</option><option>La Manouba</option><option>Médenine</option><option>Monastir</option><option>Nabeul</option><option>Sfax</option><option>Sidi Bouzid</option><option>Siliana</option><option>Sousse</option><option>Tataouine</option><option>Tozeur</option><option>Tunis</option><option>Zaghouan</option></select></label></div></> : <><legend>Parlez-nous de votre activité</legend><p className="register-step-copy">Présentez votre savoir-faire et vos services.</p><div className="register-fields-grid">
           <label className="register-field register-field-full"><span>Nom commercial <i>*</i></span><input name="businessName" placeholder="Ex. Plomberie Ben Ali" autoComplete="organization" minLength={2} required /></label>
-          <label className="register-field"><span>Spécialité <i>*</i></span><select name="specialtyChoice" value={specialtyChoice} onChange={(event) => setSpecialtyChoice(event.target.value)} required><option value="" disabled>Choisir</option><option>Plomberie</option><option>Électricité</option><option>Climatisation</option><option>Serrurerie</option><option>Électroménager</option><option>Peinture</option><option>Ménage</option><option>Autre</option></select></label>
+          <label className="register-field"><span>Spécialité <i>*</i></span><select name="specialtyChoice" value={specialtyChoice} onChange={(event) => setSpecialtyChoice(event.target.value)} required><option value="" disabled>{categories.length ? "Choisir" : "Aucune catégorie disponible"}</option>{categories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}</select></label>
           <label className="register-field"><span>Expérience <i>*</i></span><select name="experience" defaultValue="" required><option value="" disabled>Choisir</option><option>Débutant</option><option>1 à 3 ans</option><option>4 à 7 ans</option><option>8 à 15 ans</option><option>Plus de 15 ans</option></select></label>
-          {specialtyChoice === "Autre" && <label className="register-field register-field-full"><span>Précisez votre spécialité <i>*</i></span><input name="specialtyOther" placeholder="Ex. Jardinage, vitrerie…" minLength={2} required /></label>}
           <label className="register-field register-field-full"><span>Description de votre activité</span><textarea name="description" placeholder="Présentez vos services et votre savoir-faire…" rows={3} /></label>
         </div></>}
       </fieldset>

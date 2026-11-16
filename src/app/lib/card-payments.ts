@@ -2,6 +2,7 @@ import "server-only";
 import type Stripe from "stripe";
 import type { CheckoutPayment } from "@/generated/prisma/client";
 import { prisma } from "./prisma";
+import { allocatePayment } from "./payment-accounting";
 import { chatServer, userRoom } from "./chat-events";
 import { checkoutParameters, checkoutPlan, ownedPaymentRequest, PaymentError, stripeClient, stripeEligibility } from "./stripe-payments";
 import { paymentMatches } from "@/lib/payment-rules";
@@ -106,6 +107,7 @@ export async function handleCardPaymentEvent(event: Stripe.Event, stripe = strip
       return null;
     }
     await tx.checkoutPayment.update({ where: { id: payment.id }, data: { paymentIntentId: intent.id, status: "SUCCEEDED" } });
+    await allocatePayment(tx, payment, r.professionalId);
     await tx.clientInvoice.update({ where: { id: invoice.id }, data: { status: "PAID", testPaid: true, paidMillimes: payment.priorPaidMillimes + payment.amountMillimes, paidAt: new Date(), paymentReference: intent.id, receiptUrl: charge?.receipt_url, receiptNumber: charge?.receipt_number } });
     await tx.serviceRequest.update({ where: { id: r.id }, data: { clientConfirmedAt: r.clientConfirmedAt || new Date() } });
     await tx.requestEvent.create({ data: { requestId: r.id, actorId: r.clientId, status: "PAID", description: "Paiement confirmé par Stripe · Aucun débit réel" } });

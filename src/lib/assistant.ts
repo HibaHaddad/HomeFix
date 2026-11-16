@@ -1,5 +1,4 @@
 import type { DirectoryProfessional } from "@/app/lib/professional-directory";
-import { categories } from "./client-domain";
 
 export type AssistantAnalysis = { category: string; urgency: "NORMAL" | "SOON" | "URGENT"; description: string };
 export type AssistantSearch = { category: string; city: string; budget: number | null };
@@ -29,15 +28,15 @@ export function boundedText(value: unknown, max: number, min = 1): string {
   if (typeof value !== "string" || value.trim().length < min || value.length > max) throw new AssistantError("Texte invalide.", 400);
   return value.trim();
 }
-export function parseAnalysis(value: unknown): AssistantAnalysis {
+export function parseAnalysis(value: unknown, categories: readonly string[]): AssistantAnalysis {
   const data = object(value);
   if (!(categories as readonly unknown[]).includes(data.category) || !["NORMAL", "SOON", "URGENT"].includes(String(data.urgency))) throw new AssistantError("Analyse invalide.");
   return { category: data.category as string, urgency: data.urgency as AssistantAnalysis["urgency"], description: boundedText(data.description, 2000) };
 }
-export function parseSearch(value: unknown) {
+export function parseSearch(value: unknown, categories: readonly string[]) {
   const data = object(value);
   const category = boundedText(data.category, 80), city = boundedText(data.city, 100);
-  if (!(categories as readonly string[]).includes(category) || category === "Autres") throw new AssistantError("Précisez la spécialité.", 400);
+  if (!categories.includes(category)) throw new AssistantError("Précisez une spécialité active.", 400);
   if (data.budget !== null && (typeof data.budget !== "number" || !Number.isFinite(data.budget) || data.budget < 0 || data.budget > 1000000)) throw new AssistantError("Budget invalide.", 400);
   return { category, city, budget: data.budget as number | null };
 }

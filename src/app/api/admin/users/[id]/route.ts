@@ -3,6 +3,7 @@ import { adminUsersErrorResponse, getAdminUserDetail } from "@/app/lib/admin-use
 import { prisma } from "@/app/lib/prisma";
 import { hasAllowedRequestOrigin } from "@/lib/request-origin";
 import { audit } from "@/app/lib/admin-audit";
+import { resolveServiceCategory } from "@/app/lib/service-categories";
 
 async function targetId(params: Promise<{ id: string }>) {
   const { id: rawId } = await params;
@@ -60,19 +61,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   try {
-    const target = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true } });
+    const target = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true, categoryId: true } });
     if (!target) return Response.json({ error: "Utilisateur introuvable." }, { status: 404 });
     if (target.role === "ADMIN") return Response.json({ error: "Les comptes administrateur ne peuvent pas être modifiés ici." }, { status: 403 });
     if (target.role !== "PROFESSIONAL" && keys.some((key) => professionalFields.has(key))) {
       return Response.json({ error: "Les champs professionnels ne s’appliquent qu’aux prestataires." }, { status: 400 });
     }
 
+    const category = keys.includes("specialty") ? await resolveServiceCategory(data.specialty ?? "") : null;
+    if (keys.includes("specialty") && (!category || (!category.isActive && category.id !== target.categoryId))) return Response.json({ error: "Choisissez une catégorie active." }, { status: 400 });
     const email = data.email;
     if (email && await prisma.user.findFirst({ where: { email, id: { not: id } }, select: { id: true } })) {
       return Response.json({ error: "Cette adresse e-mail est déjà utilisée." }, { status: 409 });
     }
     const result = await prisma.$transaction(async tx => {
-      const result = await tx.user.updateMany({ where: { id, role: { not: "ADMIN" } }, data });
+      const result = await tx.user.updateMany({ where: { id, role: { not: "ADMIN" } }, data: { ...data, ...(category ? { specialty: category.name, categoryId: category.id } : {}) } });
       if (result.count === 1) await audit(tx, access.admin, "USER_UPDATE", `user:${id}`, undefined, { fields: keys });
       return result;
     });
