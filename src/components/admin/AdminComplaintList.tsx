@@ -29,7 +29,7 @@ export default function AdminComplaintList({ result }: { result: Result }) {
     { label: "Résolues", detail: "Dossiers résolus et clôturés", value: stats.resolved, icon: CheckCheck, tone: "green" },
   ];
   return <div className="admin-content admin-complaints-page">
-    <header className="admin-page-heading cc-page-heading"><div><div className="admin-eyebrow"><span/>RELATION & CONFIANCE</div><h1>Réclamations</h1><p>Écoutez, répondez et accompagnez chaque demande jusqu’à sa résolution.</p></div><span className="cc-total"><Inbox size={15}/>{number.format(stats.total)} réclamation{stats.total > 1 ? "s" : ""}</span></header>
+    <header className="admin-page-heading cc-page-heading"><div><div className="admin-eyebrow"><span/>RELATION & CONFIANCE</div><h1>Réclamations</h1><p>Écoutez, répondez et accompagnez chaque demande jusqu’à sa résolution.</p></div></header>
     <section className="admin-complaint-stat-grid" aria-label="Statistiques des réclamations">{cards.map(({ label, detail, value, icon: Icon, tone }) => <article className={`cc-kpi cc-tone-${tone}`} key={label}><span className="cc-kpi-icon"><Icon size={21} strokeWidth={1.8}/></span><div><span className="cc-kpi-label">{label}</span><strong>{number.format(value)}</strong><small>{detail}</small></div></article>)}</section>
     <section className="admin-card cc-list-card">
       <div className="cc-list-heading"><div><span className="cc-section-icon"><MessageSquareText size={17}/></span><h2>Suivi des réclamations</h2></div><span role="status">{number.format(matching)} résultat{matching > 1 ? "s" : ""}</span></div>

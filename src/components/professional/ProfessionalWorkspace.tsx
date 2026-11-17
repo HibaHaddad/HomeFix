@@ -5,6 +5,7 @@ import Link from "next/link";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import HomeFixBrand from "@/components/HomeFixBrand";
 import LogoutButton from "@/components/LogoutButton";
+import AccountMenu from "@/components/AccountMenu";
 import ProfessionalIcon from "@/components/professional/ProfessionalIcon";
 import ProfessionalNavigation from "@/components/professional/ProfessionalNavigation";
 
@@ -22,7 +23,7 @@ export default function ProfessionalWorkspace({ user, children }: { user: Worksp
       <div className="pro-sidebar-bottom"><div className="pro-help"><span>Besoin d’aide ?</span><small>Notre équipe est là pour vous accompagner.</small><Link href="/professionnel/aide">Contacter HomeFix ↗</Link></div><div className="pro-logout-wrap"><LogoutButton /></div></div>
     </aside>
     <div className="pro-main">
-      <header className="pro-header"><div className="pro-breadcrumb"><span className="pro-breadcrumb-home"><ProfessionalIcon name="home" size={14}/></span> HomeFix <i>/</i> <strong>Espace professionnel</strong></div><div className="pro-header-actions"><NotificationBell professional/><div className="pro-user"><span className="pro-avatar">{user.hasProfilePhoto ? <img src="/api/professionnel/photo" alt="" /> : user.name.slice(0, 1).toUpperCase()}</span><span><strong>{user.businessName || user.name}</strong><small>{user.specialty || "Professionnel"}</small></span></div></div></header>
+      <header className="pro-header"><div className="pro-breadcrumb"><span className="pro-breadcrumb-home"><ProfessionalIcon name="home" size={14}/></span> HomeFix <i>/</i> <strong>Espace professionnel</strong></div><div className="pro-header-actions"><NotificationBell professional/><AccountMenu name={user.businessName || user.name} role="Professionnel" avatar={<span className="pro-avatar">{user.hasProfilePhoto ? <img src="/api/professionnel/photo" alt="" /> : user.name.slice(0, 1).toUpperCase()}</span>}/></div></header>
       <main className="pro-content">{children}</main>
       <nav className="pro-mobile-nav" aria-label="Navigation rapide"><ProfessionalNavigation mobile /></nav>
     </div>

@@ -133,7 +133,7 @@ export default function AdminShell({ adminName, unreadCount, children }: { admin
             </div>
           </div>
         </header>
-        <div className="admin-page-content"><div className="admin-route-stage" key={pathname}>{children}</div></div>
+        <div className="admin-page-content"><div className="admin-route-stage" key={pathname === "/admin/messagerie" || pathname.startsWith("/admin/messagerie/") ? "/admin/messagerie" : pathname}>{children}</div></div>
       </main>
     </div>
   );

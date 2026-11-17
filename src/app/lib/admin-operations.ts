@@ -3,6 +3,7 @@ import { prisma } from "./prisma";
 import { adminPage } from "@/lib/admin-validation";
 import type { Prisma } from "@/generated/prisma/client";
 import { accountingTotals } from "./payment-accounting";
+import { paymentPeriod } from "@/lib/admin-payment-filters";
 export type OpsParams = Record<string, string | string[] | undefined>;
 export function opsFilters(params: OpsParams, allowed: string[] = []) {
   const one = (key: string) => { const v = params[key]; return Array.isArray(v) ? v[0] ?? "" : v ?? ""; };
@@ -38,13 +39,15 @@ export async function adminAudit(filters: ReturnType<typeof opsFilters>) {
   return { ...p, rows };
 }
 export const paymentStatuses = ["SUCCEEDED", "PARTIALLY_REFUNDED", "REFUNDED", "OPEN", "PENDING", "PROCESSING", "FAILED", "EXPIRED", "CREATING"];
-export async function adminPayments(filters: ReturnType<typeof opsFilters>) {
-  const where: Prisma.CheckoutPaymentWhereInput = { livemode: false, ...(filters.status !== "ALL" ? { status: filters.status } : {}), ...(filters.q ? { OR: [{ id: { contains: filters.q } }, { paymentIntentId: { contains: filters.q } }, { invoice: { quote: { request: { client: { name: { contains: filters.q, mode: "insensitive" } } } } } }] } : {}) };
-  const [total, totals, pendingRefunds, currencyGroups] = await Promise.all([
+export async function adminPayments(filters: ReturnType<typeof opsFilters> & { from?: string; to?: string }) {
+  const period = paymentPeriod(filters.from, filters.to);
+  const where: Prisma.CheckoutPaymentWhereInput = { livemode: false, createdAt: period.createdAt, ...(filters.status !== "ALL" ? { status: filters.status } : {}), ...(filters.q ? { OR: [{ id: { contains: filters.q } }, { paymentIntentId: { contains: filters.q } }, { invoice: { quote: { request: { client: { name: { contains: filters.q, mode: "insensitive" } } } } } }, { invoice: { quote: { request: { professional: { name: { contains: filters.q, mode: "insensitive" } } } } } }, { invoice: { quote: { request: { professional: { businessName: { contains: filters.q, mode: "insensitive" } } } } } }, { invoice: { quote: { request: { title: { contains: filters.q, mode: "insensitive" } } } } }] } : {}) };
+  const [total, totals, pendingRefunds, currencyGroups, pendingPayments] = await Promise.all([
     prisma.checkoutPayment.count({ where }),
     accountingTotals(),
     prisma.adminRefund.count({ where: { status: "PENDING" } }),
     prisma.checkoutPayment.groupBy({ by: ["currency"], where: { livemode: false, status: { in: ["SUCCEEDED", "PARTIALLY_REFUNDED", "REFUNDED"] } }, _sum: { stripeAmount: true } }),
+    prisma.checkoutPayment.count({ where: { livemode: false, status: { in: ["CREATING", "OPEN", "PENDING", "PROCESSING"] } } }),
   ]);
   const p = await paging(total, filters.page);
   const rows = await prisma.checkoutPayment.findMany({
@@ -54,11 +57,11 @@ export async function adminPayments(filters: ReturnType<typeof opsFilters>) {
       id: true, status: true, amountMillimes: true, stripeAmount: true, currency: true, createdAt: true, paymentIntentId: true,
       allocation: true,
       refund: { select: { status: true, stripeRefundId: true } },
-      invoice: { select: { id: true, quote: { select: { request: { select: {
-        id: true, title: true, client: { select: { name: true } },
-        professional: { select: { name: true, businessName: true } },
+      invoice: { select: { id: true, receiptUrl: true, receiptNumber: true, paymentReference: true, quote: { select: { request: { select: {
+        id: true, title: true, client: { select: { id: true, name: true, profilePhotoMime: true } },
+        professional: { select: { id: true, name: true, businessName: true, profilePhotoMime: true } },
       } } } } } },
     },
   });
-  return { ...p, rows, ...totals, pendingRefunds, currencyGroups };
+  return { ...p, rows, ...totals, pendingRefunds, currencyGroups, pendingPayments };
 }

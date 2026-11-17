@@ -9,6 +9,7 @@ import "./client-theme.css";
 import "./intervention-flow.css";
 import "./payments.css";
 import ClientAvatar from "@/components/client/ClientAvatar";
+import AccountMenu from "@/components/AccountMenu";
 import ClientNavigation from "@/components/client/ClientNavigation";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import NotificationProvider from "@/components/notifications/NotificationProvider";
@@ -30,7 +31,7 @@ export default async function ClientLayout({ children }: { children: React.React
   return <NotificationProvider key={session.userId} initialUnread={unreadCount}><div className="client-app cx-app"><ChatNotifications userId={session.userId}/><ClientNavigation/><div className="cx-main">
     <header className="client-header"><HomeFixBrand className="cx-header-brand"/>
       <nav aria-label="Espace client"><Link href="/dashboard">Mon espace <span className="cx-header-divider">/</span> <strong>Client</strong></Link></nav>
-      <div className="client-account"><NotificationBell/><ClientAvatar name={user.name} hasPhoto={!!user.profilePhotoMime}/><span><small>ESPACE CLIENT</small><strong>{user.name}</strong></span></div>
+      <div className="client-account"><NotificationBell/><AccountMenu name={user.name} role="Client" avatar={<ClientAvatar name={user.name} hasPhoto={!!user.profilePhotoMime}/>}/></div>
     </header>
     <main className="client-content">{children}</main>
     <footer className="client-footer"><HomeFixBrand/><span>Les bons pros. La tranquillité en plus.</span><Link href="/dashboard/reclamations">Besoin d’aide ? ↗</Link></footer>
